@@ -43,6 +43,7 @@ async function setCache(data: CacheData) {
     await put(CACHE_FILENAME, JSON.stringify(data, null, 2), {
       access: 'public',
       addRandomSuffix: false,
+      allowOverwrite: true,
     });
   } catch (error) {
     console.error('Error writing cache to blob:', error);

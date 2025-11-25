@@ -5,6 +5,7 @@ import Image from 'next/image';
 import FilterControls from '@/components/FilterControls';
 import NumberGrid from '@/components/NumberGrid';
 import { NumberEntry, filterNumbers } from '@/lib/utils';
+import { Github } from 'lucide-react';
 
 export default function Home() {
   const [numbers, setNumbers] = useState<NumberEntry[]>([]);
@@ -90,12 +91,47 @@ export default function Home() {
             </div>
           </div>
           
-          {lastUpdated && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border text-xs font-mono text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              更新时间: {formatTime(lastUpdated)}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex items-center gap-2">
+              <a
+                href="https://x.com/luoleiorg"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="Follow on X"
+              >
+                <Image
+                  src="/x.svg"
+                  alt="X (Twitter)"
+                  width={16}
+                  height={16}
+                  className="w-4 h-4"
+                />
+              </a>
+              <a
+                href="https://github.com/foru17/cuniq-go"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="View on GitHub"
+              >
+                <Image
+                  src="/github.svg"
+                  alt="GitHub"
+                  width={20}
+                  height={20}
+                  className="w-5 h-5"
+                />
+              </a>
             </div>
-          )}
+
+            {lastUpdated && (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border text-xs font-mono text-muted-foreground">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                更新时间: {formatTime(lastUpdated)}
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Filters */}

@@ -43,6 +43,7 @@ async function setCache(data: CacheData) {
     await put(CACHE_FILENAME, JSON.stringify(data, null, 2), {
       access: 'public',
       addRandomSuffix: false,
+      allowOverwrite: true,
     });
     console.log('Cache saved to Vercel Blob');
   } catch (error) {
@@ -52,8 +53,7 @@ async function setCache(data: CacheData) {
 }
 
 // Helper to merge new numbers with cache
-function mergeNumbers(existing: NumberEntry[], incoming: any[]): NumberEntry[] {
-  const now = Date.now();
+function mergeNumbers(existing: NumberEntry[], incoming: any[], updateTime: number): NumberEntry[] {
   const existingMap = new Map(existing.map(n => [n.hkNumber, n]));
   const merged: NumberEntry[] = [];
 
@@ -76,15 +76,15 @@ function mergeNumbers(existing: NumberEntry[], incoming: any[]): NumberEntry[] {
       merged.push({
         ...existingEntry,
         mainlandNumber: mainlandNumber || existingEntry.mainlandNumber,
-        lastSeenAt: now,
+        lastSeenAt: updateTime,
       });
     } else {
       // New entry
       merged.push({
         hkNumber,
         mainlandNumber,
-        addedAt: now,
-        lastSeenAt: now,
+        addedAt: updateTime,
+        lastSeenAt: updateTime,
         ...item,
       });
     }
@@ -256,6 +256,9 @@ export async function POST(request: Request) {
       special: cache.special.length
     };
 
+    // Use a single timestamp for this update cycle to ensure consistency
+    const updateTime = Date.now();
+
     // 2. Fetch fresh data from CUniq API using multiple batches
     console.log('[Update API] Fetching multiple batches from CUniq...');
     const [ordinaryData, specialData] = await Promise.all([
@@ -265,9 +268,9 @@ export async function POST(request: Request) {
 
     // 3. Merge with existing cache
     console.log('[Update API] Merging data...');
-    cache.ordinary = mergeNumbers(cache.ordinary, ordinaryData);
-    cache.special = mergeNumbers(cache.special, specialData);
-    cache.lastUpdated = Date.now();
+    cache.ordinary = mergeNumbers(cache.ordinary, ordinaryData, updateTime);
+    cache.special = mergeNumbers(cache.special, specialData, updateTime);
+    cache.lastUpdated = updateTime;
 
     // 4. Filter active numbers (seen in this update)
     const activeOrdinary = cache.ordinary.filter(n => n.lastSeenAt >= cache.lastUpdated);

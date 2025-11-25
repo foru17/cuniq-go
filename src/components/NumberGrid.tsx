@@ -72,9 +72,9 @@ export default function NumberGrid({ numbers, loading, viewMode = 'grid', filter
                       include={filters.include} 
                       luckyPattern={filters.luckyPattern} 
                     />
-                    {(entry.province || entry.city) && (
+                    {( entry.city) && (
                       <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                        {entry.province} {entry.city}
+                     {entry.city}
                       </span>
                     )}
                   </td>
@@ -128,10 +128,10 @@ export default function NumberGrid({ numbers, loading, viewMode = 'grid', filter
                     />
                   </span>
                 </div>
-                {(entry.province || entry.city) && (
+                {( entry.city) && (
                   <div className="flex justify-end">
                     <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                      {entry.province} {entry.city}
+                      {entry.city}
                     </span>
                   </div>
                 )}
