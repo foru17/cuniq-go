@@ -6,7 +6,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "CUniq Number Filter",
+  title: "选号神器 - 中國聯通(香港)CUniq 月神卡",
   description: "Advanced filtering tool for CUniq HK/Mainland numbers",
 };
 

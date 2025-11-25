@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,6 +20,7 @@ type FilterControlsProps = {
   filters: FilterState;
   onFilterChange: (filters: Partial<FilterState>) => void;
   numbers: NumberEntry[]; // Add numbers prop to extract cities dynamically
+  onReset: () => void;
 };
 
 const LUCKY_PATTERNS = [
@@ -40,6 +40,7 @@ export default function FilterControls({
   filters,
   onFilterChange,
   numbers,
+  onReset,
 }: FilterControlsProps) {
   // Dynamically extract unique cities from numbers data
   const locations = useMemo(() => {
@@ -108,16 +109,16 @@ export default function FilterControls({
   };
 
   return (
-    <section className="card p-6 mb-6 glass">
-      <div className="flex flex-col gap-6">
+    <section className="card p-4 mb-4 glass">
+      <div className="flex flex-col gap-4">
         {/* Top Bar: Type Selection */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold">筛选条件</h2>
-            <div className="flex bg-secondary rounded-lg p-1">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold">筛选条件</h2>
+            <div className="flex bg-secondary/50 rounded-lg p-0.5">
               <button
                 onClick={() => handleChange('type', 'ordinary')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
                   filters.type === 'ordinary'
                     ? 'bg-background text-primary shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -127,7 +128,7 @@ export default function FilterControls({
               </button>
               <button
                 onClick={() => handleChange('type', 'special')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
                   filters.type === 'special'
                     ? 'bg-background text-primary shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -137,106 +138,118 @@ export default function FilterControls({
               </button>
             </div>
           </div>
+
+          <button
+            onClick={onReset}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all"
+            title="重置所有筛选条件"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></svg>
+            重置
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Input Filters */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">包含数字</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">包含数字</label>
             <Input
               type="text"
-              placeholder="如: 8, 6 (逗号分隔)"
+              placeholder="如: 8, 6"
               value={filters.include}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('include', e.target.value)}
-              className="w-full"
+              className="w-full h-8 text-sm"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">排除数字</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">排除数字</label>
             <Input
               type="text"
               placeholder="如: 4, 7"
               value={filters.exclude}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('exclude', e.target.value)}
-              className="w-full"
+              className="w-full h-8 text-sm"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">尾号匹配 (位数)</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">尾号匹配</label>
             <Input
               type="text"
-              placeholder="如: 3 (匹配后3位相同)"
+              placeholder="如: 3 (后3位)"
               value={filters.suffix}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('suffix', e.target.value)}
-              className="w-full"
+              className="w-full h-8 text-sm"
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">归属地</label>
-            <div className="flex flex-wrap gap-2">
-              {locations.map((loc) => (
-                <button
-                  key={loc.value}
-                  onClick={() => handleChange('location', loc.value)}
-                  className={`
-                    relative px-3 py-1.5 pr-8 rounded-full text-sm font-medium transition-all border
-                    ${filters.location === loc.value
-                      ? 'bg-primary/10 border-primary text-primary shadow-sm'
-                      : 'bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
-                    }
-                  `}
-                >
-                  {loc.label}
-                  <span className={`
-                    absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center
-                    rounded-full text-xs font-semibold
-                    ${filters.location === loc.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                    }
-                  `}>
-                    {locationCounts.get(loc.value) || 0}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Switches */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium block mb-2">匹配范围</label>
-            <div className="flex items-center gap-6 h-[42px]">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground block mb-1">匹配范围</label>
+            <div className="flex items-center gap-4 h-8">
               <label className="flex items-center gap-2 cursor-pointer">
                 <Switch
                   checked={filters.matchHk}
                   onCheckedChange={(checked) => handleChange('matchHk', checked)}
+                  className="scale-75 origin-left"
                 />
-                <span className="text-sm">香港号码</span>
+                <span className="text-xs">香港号码</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <Switch
                   checked={filters.matchMainland}
                   onCheckedChange={(checked) => handleChange('matchMainland', checked)}
+                  className="scale-75 origin-left"
                 />
-                <span className="text-sm">内地号码</span>
+                <span className="text-xs">内地号码</span>
               </label>
             </div>
           </div>
         </div>
 
+        {/* Location Chips */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">归属地</label>
+          <div className="flex flex-wrap gap-1.5">
+            {locations.map((loc) => (
+              <button
+                key={loc.value}
+                onClick={() => handleChange('location', loc.value)}
+                className={`
+                  relative px-2.5 py-1 pr-6 rounded-full text-xs font-medium transition-all border
+                  ${filters.location === loc.value
+                    ? 'bg-primary/10 border-primary text-primary shadow-sm'
+                    : 'bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+                  }
+                `}
+              >
+                {loc.label}
+                <span className={`
+                  absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center
+                  rounded-full text-[10px] font-semibold
+                  ${filters.location === loc.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                  }
+                `}>
+                  {locationCounts.get(loc.value) || 0}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Lucky Pattern Chips */}
-        <div className="space-y-3 pt-2 border-t border-border/50">
-          <label className="text-sm font-medium">靓号模式</label>
-          <div className="flex flex-wrap gap-2">
+        <div className="space-y-1.5 pt-2 border-t border-border/30">
+          <label className="text-xs font-medium text-muted-foreground">靓号模式</label>
+          <div className="flex flex-wrap gap-1.5">
             {LUCKY_PATTERNS.map((pattern) => (
               <button
                 key={pattern.value}
                 onClick={() => handleChange('luckyPattern', pattern.value)}
                 className={`
-                  relative px-3 py-1.5 pr-8 rounded-full text-sm font-medium transition-all border
+                  relative px-2.5 py-1 pr-6 rounded-full text-xs font-medium transition-all border
                   ${filters.luckyPattern === pattern.value
                     ? 'bg-primary/10 border-primary text-primary shadow-sm'
                     : 'bg-background border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
@@ -245,8 +258,8 @@ export default function FilterControls({
               >
                 {pattern.label}
                 <span className={`
-                  absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 flex items-center justify-center
-                  rounded-full text-xs font-semibold
+                  absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center
+                  rounded-full text-[10px] font-semibold
                   ${filters.luckyPattern === pattern.value
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground'
@@ -262,4 +275,3 @@ export default function FilterControls({
     </section>
   );
 }
-

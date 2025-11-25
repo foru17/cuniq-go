@@ -56,6 +56,19 @@ export default function Home() {
     setFilters(prev => ({ ...prev, ...newFilters }));
   };
 
+  const handleReset = () => {
+    setFilters({
+      include: '',
+      exclude: '',
+      suffix: '',
+      luckyPattern: '',
+      type: 'ordinary',
+      matchHk: true,
+      matchMainland: true,
+      location: ''
+    });
+  };
+
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleString('zh-CN', {
       month: '2-digit',
@@ -83,10 +96,10 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
-                CUniq 月神卡选号神器
+                CUniq Go 月神卡选号神器
               </h1>
               <p className="text-muted-foreground mt-1 text-sm font-medium">
-                CUniq 香港/内地一卡双号筛选工具
+               中国联通香港/内地一卡双号筛选工具
               </p>
             </div>
           </div>
@@ -134,11 +147,39 @@ export default function Home() {
           </div>
         </header>
 
+        {/* Promo Module */}
+        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-6 shadow-sm">
+          <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+            <div className="space-y-3 flex-1">
+              <p className="text-base text-muted-foreground leading-relaxed">
+               <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent font-bold">CUniq Go 月神卡</span> 是目前少数支持海外手机激活 <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent font-bold">eSIM</span>，且能以<span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent font-bold">低成本</span>同时拥有<span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-bold">香港 +852</span> 和 <span className="bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent font-bold">内地 +86</span> 号码的方案。
+              </p>
+              <p className="text-base text-muted-foreground leading-relaxed">
+                本工具旨在辅助筛选心仪号码，并在 Github 上开源，<b>数据来自 CUniq 官网，每 15 分钟更新一次。</b>
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <a
+                href="https://store.cuniq.com/tc/services-plan/cuniq-go/cuniq-go-monthly"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all shadow-sm hover:shadow-md active:scale-95"
+              >
+                CUniq 网上商城-月神卡 
+                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+
         {/* Filters */}
         <FilterControls 
           filters={filters} 
           onFilterChange={handleFilterChange} 
           numbers={numbers}
+          onReset={handleReset}
         />
 
         {/* Content Header */}
