@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getLocation } from '@/lib/location';
-import { put, list } from '@vercel/blob';
+import { uploadToR2 } from '@/lib/s3';
 
 // Cache configuration
 const CACHE_FILENAME = 'cache.json';
+
+// Cache the response for 60 seconds to reduce R2/S3 operations
+export const revalidate = 60;
 
 type NumberEntry = {
   hkNumber: string;
@@ -19,34 +22,36 @@ type CacheData = {
   lastUpdated: number;
 };
 
-// Helper to read cache from Blob
+// Helper to read cache from R2 (Public URL)
 async function getCache(): Promise<CacheData | null> {
   try {
-    const { blobs } = await list({ prefix: CACHE_FILENAME, limit: 1 });
-    const blob = blobs.find(b => b.pathname === CACHE_FILENAME);
+    const domain = process.env.S3_DOMAIN_HOST?.replace(/\/$/, '');
+    if (!domain) {
+      console.warn('[getCache] S3_DOMAIN_HOST not set');
+      return null;
+    }
 
-    if (blob) {
-      const response = await fetch(blob.url);
-      if (response.ok) {
-        return await response.json();
-      }
+    const url = `${domain}/${CACHE_FILENAME}`;
+    console.log(`[getCache] Fetching from: ${url}`);
+    
+    const response = await fetch(url, { cache: 'no-store' });
+    if (response.ok) {
+      return await response.json();
+    } else {
+      console.warn(`[getCache] Failed to fetch: ${response.status}`);
     }
   } catch (error) {
-    console.error('Error reading cache from blob:', error);
+    console.error('Error reading cache from R2:', error);
   }
   return null;
 }
 
-// Helper to write cache to Blob
+// Helper to write cache to R2 (used for location enrichment)
 async function setCache(data: CacheData) {
   try {
-    await put(CACHE_FILENAME, JSON.stringify(data, null, 2), {
-      access: 'public',
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    });
+    await uploadToR2(CACHE_FILENAME, JSON.stringify(data, null, 2));
   } catch (error) {
-    console.error('Error writing cache to blob:', error);
+    console.error('Error writing cache to R2:', error);
   }
 }
 
