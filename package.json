@@ -9,14 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@vercel/blob": "^2.0.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.378.0",
     "next": "16.0.4",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "tailwindcss-animate": "^1.0.7",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^2.3.0",
-    "class-variance-authority": "^0.7.0",
-    "lucide-react": "^0.378.0"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/node": "^20",

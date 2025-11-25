@@ -1,17 +1,9 @@
-
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { getLocation } from '@/lib/location';
+import { put, list } from '@vercel/blob';
 
 // Cache configuration
-const CACHE_FILE_PATH = path.join(process.cwd(), 'data', 'cache.json');
-
-// Ensure data directory exists
-const dataDir = path.join(process.cwd(), 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+const CACHE_FILENAME = 'cache.json';
 
 type NumberEntry = {
   hkNumber: string;
@@ -27,25 +19,35 @@ type CacheData = {
   lastUpdated: number;
 };
 
-// Helper to read cache
-function getCache(): CacheData | null {
+// Helper to read cache from Blob
+async function getCache(): Promise<CacheData | null> {
   try {
-    if (fs.existsSync(CACHE_FILE_PATH)) {
-      const data = fs.readFileSync(CACHE_FILE_PATH, 'utf-8');
-      return JSON.parse(data);
+    const { blobs } = await list({ prefix: CACHE_FILENAME, limit: 1 });
+    const blob = blobs.find(b => b.pathname === CACHE_FILENAME);
+
+    if (blob) {
+      const response = await fetch(blob.url);
+      if (response.ok) {
+        return await response.json();
+      }
     }
   } catch (error) {
-    console.error('Error reading cache:', error);
+    console.error('Error reading cache from blob:', error);
   }
   return null;
 }
 
-// Helper to write cache
-function setCache(data: CacheData) {
+// Helper to write cache to Blob
+async function setCache(data: CacheData) {
   try {
-    fs.writeFileSync(CACHE_FILE_PATH, JSON.stringify(data, null, 2));
+    await put(CACHE_FILENAME, JSON.stringify(data, null, 2), {
+      access: 'public',
+      addRandomSuffix: false,
+    });
+    console.log('Cache saved to Vercel Blob');
   } catch (error) {
-    console.error('Error writing cache:', error);
+    console.error('Error writing cache to blob:', error);
+    throw error;
   }
 }
 
@@ -244,7 +246,7 @@ export async function POST(request: Request) {
 
   try {
     // 1. Load existing cache
-    let cache = getCache();
+    let cache = await getCache();
     if (!cache) {
       cache = { ordinary: [], special: [], lastUpdated: 0 };
     }
@@ -289,7 +291,7 @@ export async function POST(request: Request) {
 
     // 6. Save updated cache
     console.log('[Update API] Saving cache...');
-    setCache(cache);
+    await setCache(cache);
 
     const duration = Date.now() - startTime;
     const result = {
