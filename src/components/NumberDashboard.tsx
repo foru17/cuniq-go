@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import FilterControls from '@/components/FilterControls';
 import NumberGrid from '@/components/NumberGrid';
 import { NumberEntry, filterNumbers } from '@/lib/utils';
@@ -10,66 +11,51 @@ import Image from 'next/image';
 type NumberDashboardProps = {
   initialNumbers: NumberEntry[];
   lastUpdated: number;
+  currentType: 'ordinary' | 'special';
 };
 
-export default function NumberDashboard({ initialNumbers, lastUpdated }: NumberDashboardProps) {
+export default function NumberDashboard({ initialNumbers, lastUpdated, currentType }: NumberDashboardProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filters, setFilters] = useState({
     include: '',
     exclude: '',
     suffix: '',
     luckyPattern: '',
-    type: 'ordinary' as 'ordinary' | 'special',
+    type: currentType,
     matchHk: true,
     matchMainland: true,
     location: ''
   });
 
-  // We use initialNumbers directly. 
-  // If we wanted to support "refresh" or switching types (ordinary/special) without page reload,
-  // we might need to fetch here. 
-  // But for now, let's assume switching types might be a navigation or we fetch.
-  // The original page fetched on type change.
-  // Let's keep it simple: if type changes, we might need to fetch new data or 
-  // we can just reload the page with a query param? 
-  // Or we can keep the client-side fetch for type switching?
-  // A better RSC approach is to use URL search params for type, so switching type is a navigation.
-  // But to preserve the exact behavior of the original page (SPA-like), we might need to fetch.
-  // However, the original page re-fetched on type change.
-  // Let's implement client-side fetching for type switching to maintain UX, 
-  // but initialize with server data.
-  
   const [numbers, setNumbers] = useState<NumberEntry[]>(initialNumbers);
   const [loading, setLoading] = useState(false);
-  const [currentLastUpdated, setCurrentLastUpdated] = useState(lastUpdated);
+  
+  // Sync numbers when initialNumbers prop changes (e.g. after navigation)
+  useEffect(() => {
+    setNumbers(initialNumbers);
+    setLoading(false);
+    // Also sync the filter type to match the prop
+    setFilters(prev => ({ ...prev, type: currentType }));
+  }, [initialNumbers, currentType]);
 
-  // If type changes, we need to fetch new data if it's not the initial type.
-  // Actually, let's just use the props for now. 
-  // If the user changes the type filter, we should probably trigger a router.push 
-  // to `/?type=special` so the server can render it? 
-  // Or we can keep the client-side fetch for that specific interaction.
-  // Let's keep the client-side fetch for type switching for now to avoid full page reloads,
-  // but use initialNumbers for the first render.
-
-  const handleFilterChange = async (newFilters: any) => {
+  const handleFilterChange = (newFilters: any) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
 
-    // If type changed, fetch new data
-    if (newFilters.type && newFilters.type !== filters.type) {
+    // If type changed, navigate to new URL
+    if (newFilters.type && newFilters.type !== currentType) {
       setLoading(true);
-      try {
-        const res = await fetch(`/api/numbers?type=${newFilters.type}`);
-        const data = await res.json();
-        if (data.data) {
-          setNumbers(data.data);
-          setCurrentLastUpdated(data.lastUpdated);
-        }
-      } catch (error) {
-        console.error('Failed to fetch numbers:', error);
-      } finally {
-        setLoading(false);
-      }
+      setNumbers([]); // Clear numbers to show loading skeleton
+      
+      const params = new URLSearchParams(searchParams);
+      params.set('type', newFilters.type);
+      
+      // Use replace or push? Push is better for history.
+      router.push(`${pathname}?${params.toString()}`);
     }
   };
 
@@ -88,11 +74,14 @@ export default function NumberDashboard({ initialNumbers, lastUpdated }: NumberD
       matchMainland: true,
       location: ''
     });
-    // If we were on special, reset to ordinary? 
-    // The original reset set type to ordinary.
-    if (filters.type !== 'ordinary') {
-       // Trigger fetch for ordinary
-       handleFilterChange({ type: 'ordinary' });
+    
+    // If we were on special, navigate back to ordinary
+    if (currentType !== 'ordinary') {
+       setLoading(true);
+       setNumbers([]);
+       const params = new URLSearchParams(searchParams);
+       params.set('type', 'ordinary');
+       router.push(`${pathname}?${params.toString()}`);
     }
   };
 
@@ -164,10 +153,10 @@ export default function NumberDashboard({ initialNumbers, lastUpdated }: NumberD
             </a>
           </div>
 
-          {currentLastUpdated > 0 && (
+          {lastUpdated > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border text-xs font-mono text-muted-foreground">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              更新时间: {formatTime(currentLastUpdated)}
+              更新时间: {formatTime(lastUpdated)}
             </div>
           )}
         </div>
