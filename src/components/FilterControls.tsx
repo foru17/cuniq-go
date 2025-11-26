@@ -113,8 +113,8 @@ export default function FilterControls({
       <div className="flex flex-col gap-4">
         {/* Top Bar: Type Selection */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
+        
           <div className="flex items-center gap-3">
-            <h2 className="text-base font-semibold">筛选条件</h2>
             <div className="flex bg-secondary/50 rounded-lg p-0.5">
               <button
                 onClick={() => handleChange('type', 'ordinary')}
@@ -174,7 +174,7 @@ export default function FilterControls({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">尾号匹配</label>
+            <label className="text-xs font-medium text-muted-foreground">尾号匹配位数</label>
             <Input
               type="text"
               placeholder="如: 3 (后3位)"

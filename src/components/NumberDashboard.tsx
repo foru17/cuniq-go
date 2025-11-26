@@ -165,20 +165,44 @@ export default function NumberDashboard({ initialNumbers, lastUpdated, currentTy
       {/* Promo Module */}
       <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-6 shadow-sm">
         <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-          <div className="space-y-3 flex-1">
-            <p className="text-base text-muted-foreground leading-relaxed">
-             <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent font-bold">CUniq Go 月神卡</span> 是目前少数支持海外手机激活 <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent font-bold">eSIM</span>，且能以<span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent font-bold">低成本</span>同时拥有<span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent font-bold">香港 +852</span> 和 <span className="bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent font-bold">内地 +86</span> 号码的方案。
-            </p>
-            <p className="text-base text-muted-foreground leading-relaxed">
-              本工具旨在辅助筛选心仪号码，并在 Github 上开源，<b>数据来自 CUniq 官网，每 15 分钟更新一次。</b>
-            </p>
-          </div>
+<div className="space-y-4 flex-1">
+  <p className="text-base text-muted-foreground leading-loose">
+    <span className="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent font-extrabold">
+      CUniq Go 月神卡
+    </span>
+    {' '}: <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent font-bold">低成本</span>持有{' '}
+    <span className="bg-gradient-to-r from-fuchsia-600 to-purple-600 bg-clip-text text-transparent font-bold">
+      香港 +852
+    </span>
+    {' '}与{' '}
+    <span className="bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent font-bold">
+      内地 +86
+    </span>
+    {' '}双号，且支持海外手机{' '}
+    <span className="bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent font-bold">
+      eSIM
+    </span>
+    {' '}激活。
+  </p>
+
+  <p className="text-base text-muted-foreground leading-loose">
+    本项目已在{' '}
+    <span className="font-semibold text-foreground decoration-slate-400 underline-offset-4 hover:underline cursor-pointer">
+      <a href="https://github.com/foru17/cuniq-go" target='_blank'>GitHub 开源</a>
+    </span>
+    。数据源自 CUniq 官网公开渠道，
+    <span className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent font-bold">
+      每 15 分钟自动同步
+    </span>
+    ，助您发现心仪靓号。
+  </p>
+</div>
           <div className="flex-shrink-0">
             <a
               href="https://store.cuniq.com/tc/services-plan/cuniq-go/cuniq-go-monthly"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all shadow-sm hover:shadow-md active:scale-95"
+              className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-gradient-to-r from-red-400 to-rose-500 dark:from-red-700 dark:to-rose-900 text-primary-foreground dark:text-white font-medium hover:bg-primary/90 transition-all shadow-sm hover:shadow-md active:scale-95"
             >
               CUniq 网上商城-月神卡 
               <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
