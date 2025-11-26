@@ -1,7 +1,6 @@
-import fs from 'fs';
-import path from 'path';
+import { uploadToR2 } from '@/lib/s3';
 
-const CACHE_FILE = path.join(process.cwd(), 'data', 'location_cache.json');
+const LOCATION_CACHE_FILE = 'location_cache.json';
 const API_URL = 'https://imobile.market.alicloudapi.com/mobile/query';
 const APP_CODE = process.env.NEXT_PUBLIC_APP_CODE;
 
@@ -16,30 +15,42 @@ type LocationData = {
 
 type LocationCache = Record<string, LocationData>;
 
-// Load cache from disk
-function loadCache(): LocationCache {
+// In-memory cache to avoid repeated requests
+let memoryCache: LocationCache | null = null;
+
+// Load cache from R2
+async function loadCache(): Promise<LocationCache> {
   try {
-    if (fs.existsSync(CACHE_FILE)) {
-      const data = fs.readFileSync(CACHE_FILE, 'utf-8');
-      return JSON.parse(data);
+    const domain = process.env.S3_DOMAIN_HOST?.replace(/\/$/, '');
+    if (!domain) {
+      console.warn('[Location] S3_DOMAIN_HOST not set');
+      return {};
+    }
+
+    const url = `${domain}/${LOCATION_CACHE_FILE}`;
+    console.log(`[Location] Loading cache from: ${url}`);
+
+    const response = await fetch(url, { cache: 'no-store' });
+    if (response.ok) {
+      return await response.json();
+    } else {
+      console.log(`[Location] Cache not found or error: ${response.status}`);
     }
   } catch (error) {
-    console.error('Error loading location cache:', error);
+    console.error('[Location] Error loading cache:', error);
   }
   return {};
 }
 
-// Save cache to disk
-function saveCache(cache: LocationCache) {
+// Save cache to R2
+async function saveCache(cache: LocationCache) {
   try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
+    console.log('[Location] Saving cache to R2...');
+    await uploadToR2(LOCATION_CACHE_FILE, JSON.stringify(cache, null, 2));
   } catch (error) {
-    console.error('Error saving location cache:', error);
+    console.error('[Location] Error saving cache:', error);
   }
 }
-
-// In-memory cache to avoid repeated file reads
-let memoryCache: LocationCache | null = null;
 
 export async function getLocation(number: string): Promise<LocationData | null> {
   if (!number || number.length < 7) return null;
@@ -47,8 +58,9 @@ export async function getLocation(number: string): Promise<LocationData | null> 
   // Extract first 7 digits (area_num)
   const areaNum = number.substring(0, 7);
 
+  // Initialize cache if needed
   if (!memoryCache) {
-    memoryCache = loadCache();
+    memoryCache = await loadCache();
   }
 
   // Check cache
@@ -58,7 +70,7 @@ export async function getLocation(number: string): Promise<LocationData | null> 
 
   // Fetch from API
   try {
-    console.log(`Fetching location for ${areaNum}...`);
+    console.log(`[Location] Fetching from API for ${areaNum}...`);
     const response = await fetch(`${API_URL}?number=${number}`, {
       headers: {
         'Authorization': `APPCODE ${APP_CODE}`
@@ -66,7 +78,7 @@ export async function getLocation(number: string): Promise<LocationData | null> 
     });
 
     if (!response.ok) {
-      console.error(`API Error: ${response.status} ${response.statusText}`);
+      console.error(`[Location] API Error: ${response.status} ${response.statusText}`);
       return null;
     }
 
@@ -78,13 +90,14 @@ export async function getLocation(number: string): Promise<LocationData | null> 
       // Update cache
       if (memoryCache) {
         memoryCache[areaNum] = location;
-        saveCache(memoryCache);
+        // Save to R2 asynchronously
+        await saveCache(memoryCache);
       }
       
       return location;
     }
   } catch (error) {
-    console.error('Error fetching location:', error);
+    console.error('[Location] Error fetching location:', error);
   }
 
   return null;

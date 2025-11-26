@@ -186,7 +186,7 @@ export default function FilterControls({
 
           {/* Switches */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground block mb-1">匹配范围</label>
+            <label className="text-xs font-medium text-muted-foreground">匹配范围</label>
             <div className="flex items-center gap-4 h-8">
               <label className="flex items-center gap-2 cursor-pointer">
                 <Switch

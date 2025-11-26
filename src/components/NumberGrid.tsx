@@ -76,7 +76,7 @@ export default function NumberGrid({ numbers, loading, viewMode = 'grid', filter
                       />
                     </div>
                     {( entry.city) && (
-                      <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] md:text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 whitespace-nowrap">
+                      <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] md:text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 whitespace-nowrap dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-400/30">
                      {entry.city}
                       </span>
                     )}
@@ -103,7 +103,7 @@ export default function NumberGrid({ numbers, loading, viewMode = 'grid', filter
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-lg" role="img" aria-label="Hong Kong">🇭🇰</span>
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">HK</span>
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">+852</span>
               </div>
               <span className="font-mono text-lg font-bold tracking-tight transition-colors">
                 <HighlightedNumber 
@@ -122,7 +122,7 @@ export default function NumberGrid({ numbers, loading, viewMode = 'grid', filter
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-lg" role="img" aria-label="China">🇨🇳</span>
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">CN</span>
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">+86</span>
                 </div>
                 <span className="font-mono text-lg font-bold tracking-tight transition-colors">
                   <HighlightedNumber 
@@ -134,7 +134,7 @@ export default function NumberGrid({ numbers, loading, viewMode = 'grid', filter
               </div>
               {( entry.city) && (
                 <div className="flex justify-end">
-                  <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                  <span className="inline-flex items-center rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-400/30">
                     {entry.city}
                   </span>
                 </div>
