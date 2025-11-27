@@ -1,26 +1,28 @@
 'use client';
 
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import FilterControls from '@/components/FilterControls';
+import FilterControls, { FilterState } from '@/components/FilterControls';
 import NumberGrid from '@/components/NumberGrid';
 import { NumberEntry, filterNumbers } from '@/lib/utils';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import Image from 'next/image';
+import DashboardHeader from '@/components/DashboardHeader';
+import PromoSection from '@/components/PromoSection';
 
 type NumberDashboardProps = {
   initialNumbers: NumberEntry[];
   lastUpdated: number;
   currentType: 'ordinary' | 'special';
+  totalCount: number;
 };
 
-export default function NumberDashboard({ initialNumbers, lastUpdated, currentType }: NumberDashboardProps) {
+export default function NumberDashboard({ initialNumbers, lastUpdated, currentType, totalCount }: NumberDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<FilterState>({
     include: '',
     exclude: '',
     suffix: '',
@@ -42,7 +44,7 @@ export default function NumberDashboard({ initialNumbers, lastUpdated, currentTy
     setFilters(prev => ({ ...prev, type: currentType }));
   }, [initialNumbers, currentType]);
 
-  const handleFilterChange = (newFilters: any) => {
+  const handleFilterChange = (newFilters: Partial<FilterState>) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
 
@@ -54,7 +56,6 @@ export default function NumberDashboard({ initialNumbers, lastUpdated, currentTy
       const params = new URLSearchParams(searchParams);
       params.set('type', newFilters.type);
       
-      // Use replace or push? Push is better for history.
       router.push(`${pathname}?${params.toString()}`);
     }
   };
@@ -85,190 +86,80 @@ export default function NumberDashboard({ initialNumbers, lastUpdated, currentTy
     }
   };
 
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <header className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 border-b border-border">
-        <div className="flex items-center gap-4">
-          <div className="relative w-12 h-12 overflow-hidden rounded-xl bg-primary/5 p-2 ring-1 ring-border">
-            <Image 
-              src="/logo.svg" 
-              alt="CUniq Logo" 
-              width={48} 
-              height={48} 
-              className="w-full h-full object-contain dark:invert"
+    <ScrollArea className="h-full w-full rounded-md">
+      <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
+        <DashboardHeader />
+        
+        <PromoSection totalCount={totalCount} lastUpdated={lastUpdated} />
+
+        {/* Main Content Area */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Left Sidebar: Filters */}
+          <aside className="w-full lg:w-72 flex-shrink-0 lg:sticky lg:top-4 z-10">
+            <FilterControls 
+              filters={filters} 
+              onFilterChange={handleFilterChange} 
+              numbers={numbers}
+              onReset={handleReset}
+              className="mb-0"
+              gridClassName="lg:grid-cols-1"
+            />
+          </aside>
+
+          {/* Right Content: Number Grid */}
+          <div className="flex-1 w-full min-w-0 space-y-4">
+            {/* Content Header */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold tracking-tight">可用号码</h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  {filteredNumbers.length}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-md transition-all ${
+                    viewMode === 'grid' 
+                      ? 'bg-background text-foreground shadow-sm ring-1 ring-border' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="网格视图"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-md transition-all ${
+                    viewMode === 'list' 
+                      ? 'bg-background text-foreground shadow-sm ring-1 ring-border' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="列表视图"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <NumberGrid 
+              numbers={filteredNumbers} 
+              loading={loading} 
+              viewMode={viewMode} 
+              filters={{
+                include: filters.include,
+                suffix: filters.suffix,
+                luckyPattern: filters.luckyPattern,
+                matchHk: filters.matchHk,
+                matchMainland: filters.matchMainland,
+                location: filters.location
+              }}
             />
           </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
-              CUniq Go 月神卡 选号神器
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm font-medium">
-             中国联通香港/内地一卡双号筛选工具
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <a
-              href="https://x.com/luoleiorg"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              title="Follow on X"
-            >
-              <Image
-                src="/x.svg"
-                alt="X (Twitter)"
-                width={16}
-                height={16}
-                className="w-4 h-4 dark:invert"
-              />
-            </a>
-            <a
-              href="https://github.com/foru17/cuniq-go"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 rounded-full bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              title="View on GitHub"
-            >
-              <Image
-                src="/github.svg"
-                alt="GitHub"
-                width={20}
-                height={20}
-                className="w-5 h-5 dark:invert"
-              />
-            </a>
-          </div>
-
-          {lastUpdated > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border text-xs font-mono text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              更新时间: {formatTime(lastUpdated)}
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Promo Module */}
-      <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-transparent p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-<div className="space-y-4 flex-1">
-  <p className="text-base text-muted-foreground leading-loose">
-    <span className="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent font-extrabold">
-      CUniq Go 月神卡
-    </span>
-    {' '}: <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent font-bold">低成本</span>持有{' '}
-    <span className="bg-gradient-to-r from-fuchsia-600 to-purple-600 bg-clip-text text-transparent font-bold">
-      香港 +852
-    </span>
-    {' '}与{' '}
-    <span className="bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent font-bold">
-      内地 +86
-    </span>
-    {' '}双号，且支持海外手机{' '}
-    <span className="bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent font-bold">
-      eSIM
-    </span>
-    {' '}激活。
-  </p>
-
-  <p className="text-base text-muted-foreground leading-loose">
-    本项目已在{' '}
-    <span className="font-semibold text-foreground decoration-slate-400 underline-offset-4 hover:underline cursor-pointer">
-      <a href="https://github.com/foru17/cuniq-go" target='_blank'>GitHub 开源</a>
-    </span>
-    。数据源自 CUniq 官网公开渠道，
-    <span className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent font-bold">
-      每 15 分钟自动同步
-    </span>
-    ，助您发现心仪靓号。
-  </p>
-</div>
-          <div className="flex-shrink-0">
-            <a
-              href="https://store.cuniq.com/tc/services-plan/cuniq-go/cuniq-go-monthly"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center px-6 py-2.5 rounded-lg bg-gradient-to-r from-red-400 to-rose-500 dark:from-red-700 dark:to-rose-900 text-primary-foreground dark:text-white font-medium hover:bg-primary/90 transition-all shadow-sm hover:shadow-md active:scale-95"
-            >
-              CUniq 网上商城-月神卡 
-              <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </a>
-          </div>
         </div>
       </div>
-
-      {/* Filters */}
-      <FilterControls 
-        filters={filters} 
-        onFilterChange={handleFilterChange} 
-        numbers={numbers}
-        onReset={handleReset}
-      />
-
-      {/* Content Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold tracking-tight">可用号码</h2>
-          <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
-            {filteredNumbers.length}
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg border border-border">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded-md transition-all ${
-              viewMode === 'grid' 
-                ? 'bg-background text-foreground shadow-sm ring-1 ring-border' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            title="网格视图"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-md transition-all ${
-              viewMode === 'list' 
-                ? 'bg-background text-foreground shadow-sm ring-1 ring-border' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            title="列表视图"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <NumberGrid 
-        numbers={filteredNumbers} 
-        loading={loading} 
-        viewMode={viewMode} 
-        filters={{
-          include: filters.include,
-          suffix: filters.suffix,
-          luckyPattern: filters.luckyPattern,
-          matchHk: filters.matchHk,
-          matchMainland: filters.matchMainland,
-          location: filters.location
-        }}
-      />
-    </div>
+    </ScrollArea>
   );
 }

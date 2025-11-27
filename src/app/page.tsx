@@ -1,4 +1,4 @@
-import { getNumbers } from '@/services/numberService';
+import { getNumbers, getTotalNumbersCount } from '@/services/numberService';
 import NumberDashboard from '@/components/NumberDashboard';
 
 // Force dynamic rendering since we fetch fresh data
@@ -16,6 +16,7 @@ export default async function Home({
   const type = (typeof typeParam === 'string' && typeParam === 'special') ? 'special' : 'ordinary';
   
   const { data, lastUpdated } = await getNumbers(type);
+  const totalCount = await getTotalNumbersCount();
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -38,7 +39,7 @@ export default async function Home({
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans selection:bg-primary/10">
+    <main className="h-screen overflow-hidden bg-background text-foreground font-sans selection:bg-primary/10 flex flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -47,6 +48,7 @@ export default async function Home({
         initialNumbers={data} 
         lastUpdated={lastUpdated} 
         currentType={type}
+        totalCount={totalCount}
       />
     </main>
   );

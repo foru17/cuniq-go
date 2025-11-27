@@ -19,7 +19,7 @@ type NumberGridProps = {
 export default function NumberGrid({ numbers, loading, viewMode = 'grid', filters = { include: '', luckyPattern: '' } }: NumberGridProps) {
   if (loading && numbers.length === 0) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
         {[...Array(10)].map((_, i) => (
           <div key={i} className="h-24 rounded-xl animate-pulse bg-muted/50 border border-border/50"></div>
         ))}
@@ -91,7 +91,7 @@ export default function NumberGrid({ numbers, loading, viewMode = 'grid', filter
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-10">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 pb-10">
       {numbers.map((entry, i) => (
         <div 
           key={`${entry.hkNumber}-${i}`} 

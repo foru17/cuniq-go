@@ -99,3 +99,14 @@ export async function getNumbers(type: 'ordinary' | 'special' = 'ordinary') {
     lastUpdated: cache.lastUpdated
   };
 }
+
+export async function getTotalNumbersCount() {
+  const cache = await getCache();
+  if (!cache) return 0;
+  
+  // Filter active numbers
+  const activeOrdinary = cache.ordinary.filter(n => n.lastSeenAt >= cache!.lastUpdated);
+  const activeSpecial = cache.special.filter(n => n.lastSeenAt >= cache!.lastUpdated);
+  
+  return activeOrdinary.length + activeSpecial.length;
+}

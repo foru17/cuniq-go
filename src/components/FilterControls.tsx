@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Switch } from '@/components/ui/Switch';
 import { Input } from '@/components/ui/input';
-import { NumberEntry, filterNumbers } from '@/lib/utils';
+import { NumberEntry, filterNumbers, cn } from '@/lib/utils';
 
 export type FilterState = {
   include: string;
@@ -21,6 +21,8 @@ type FilterControlsProps = {
   onFilterChange: (filters: Partial<FilterState>) => void;
   numbers: NumberEntry[]; // Add numbers prop to extract cities dynamically
   onReset: () => void;
+  className?: string;
+  gridClassName?: string;
 };
 
 const LUCKY_PATTERNS = [
@@ -41,6 +43,8 @@ export default function FilterControls({
   onFilterChange,
   numbers,
   onReset,
+  className,
+  gridClassName,
 }: FilterControlsProps) {
   // Dynamically extract unique cities from numbers data
   const locations = useMemo(() => {
@@ -109,7 +113,7 @@ export default function FilterControls({
   };
 
   return (
-    <section className="card p-4 mb-4 glass">
+    <section className={cn("card p-4 mb-4 glass", className)}>
       <div className="flex flex-col gap-4">
         {/* Top Bar: Type Selection */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
@@ -149,7 +153,7 @@ export default function FilterControls({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4", gridClassName)}>
           {/* Input Filters */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">包含数字</label>
