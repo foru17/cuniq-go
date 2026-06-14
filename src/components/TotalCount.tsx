@@ -51,8 +51,8 @@ export default function TotalCount({ count, lastUpdated }: { count: number; last
   };
 
   return (
-    <div className="h-full relative overflow-hidden rounded-2xl border border-primary/10 bg-background/50 p-4 shadow-sm backdrop-blur-sm hover:border-primary/20 transition-colors group flex items-center justify-center">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity" />
+    <div className="h-full relative overflow-hidden rounded-2xl border border-primary/10 bg-background/50 p-4 shadow-xs backdrop-blur-xs hover:border-primary/20 transition-colors group flex items-center justify-center">
+      <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity" />
       
       <div className="relative flex flex-row xl:flex-col items-center gap-6 xl:gap-3 px-2">
         {/* Count Section */}
@@ -61,7 +61,7 @@ export default function TotalCount({ count, lastUpdated }: { count: number; last
             当前号码数量
           </h3>
           <div className="flex items-baseline gap-1.5 min-w-[100px] justify-center">
-            <span className="text-3xl font-black bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent tabular-nums tracking-tight">
+            <span className="text-3xl font-black bg-linear-to-r from-primary to-violet-500 bg-clip-text text-transparent tabular-nums tracking-tight">
               {animatedCount.toLocaleString()}
             </span>
             <span className="text-xs font-bold text-muted-foreground/80">个</span>

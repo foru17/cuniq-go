@@ -29,7 +29,7 @@ export default function DashboardHeader() {
         </div>
 
         <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-linear-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
             CUniq Go 月神卡 选号神器
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-medium">

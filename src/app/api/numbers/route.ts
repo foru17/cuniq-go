@@ -13,7 +13,7 @@ type NumberEntry = {
   mainlandNumber: string;
   addedAt: number;
   lastSeenAt: number;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 type CacheData = {
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
   const type = searchParams.get('type'); // 'ordinary' or 'special'
 
   // Read cache
-  let cache = await getCache();
+  const cache = await getCache();
 
   // Return empty data if cache doesn't exist
   if (!cache) {

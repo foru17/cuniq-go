@@ -10,7 +10,18 @@ type NumberEntry = {
   mainlandNumber: string;
   addedAt: number;
   lastSeenAt: number;
-  [key: string]: any;
+  [key: string]: unknown;
+};
+
+// Raw payload shape returned by the CUniq API (loosely typed; keys vary)
+type RawNumber = {
+  number?: string;
+  hkNumber?: string;
+  mainlandNumber?: string;
+  mcNumber?: string;
+  mainland?: string;
+  mainland_number?: string;
+  [key: string]: unknown;
 };
 
 type CacheData = {
@@ -55,7 +66,7 @@ async function setCache(data: CacheData) {
 }
 
 // Helper to merge new numbers with cache
-function mergeNumbers(existing: NumberEntry[], incoming: any[], updateTime: number): NumberEntry[] {
+function mergeNumbers(existing: NumberEntry[], incoming: RawNumber[], updateTime: number): NumberEntry[] {
   const existingMap = new Map(existing.map(n => [n.hkNumber, n]));
   const merged: NumberEntry[] = [];
 
@@ -81,13 +92,14 @@ function mergeNumbers(existing: NumberEntry[], incoming: any[], updateTime: numb
         lastSeenAt: updateTime,
       });
     } else {
-      // New entry
+      // New entry — spread raw payload first so the computed/normalized
+      // fields below always win (a raw `hkNumber: undefined` must not clobber it).
       merged.push({
+        ...item,
         hkNumber,
         mainlandNumber,
         addedAt: updateTime,
         lastSeenAt: updateTime,
-        ...item,
       });
     }
   }
@@ -159,8 +171,8 @@ async function fetchMultipleBatches(
   headers: Record<string, string>,
   batchCount: number = BATCH_COUNT,
   delayMs: number = BATCH_DELAY_MS
-): Promise<any[]> {
-  const allNumbers: any[] = [];
+): Promise<RawNumber[]> {
+  const allNumbers: RawNumber[] = [];
   const seenHkNumbers = new Set<string>();
   
   console.log(`[Batch Fetch] Starting ${batchCount} requests...`);
@@ -172,7 +184,7 @@ async function fetchMultipleBatches(
     
     let newInBatch = 0;
     // Deduplicate within all batches
-    batch.forEach((item: any) => {
+    batch.forEach((item: RawNumber) => {
       const hkNumber = item.number || item.hkNumber;
       if (hkNumber && !seenHkNumbers.has(hkNumber)) {
         seenHkNumbers.add(hkNumber);

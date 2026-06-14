@@ -48,14 +48,16 @@ export default function HighlightedNumber({ number, include, luckyPattern, class
           // If already has a style, maybe combine or overwrite?
           // Pattern takes precedence over include
           if (range.type === 'pattern') {
-             // Group 1: Red (AA), Group 2: Green (BB), Group 3: Orange (X)
+             // Group 1: AA (rose), Group 2: BB (amber), Group 3: X separator (emerald)
              if (range.group === 3) {
-               charStyles[i] = 'text-green-600 font-black';
+               charStyles[i] = 'text-emerald-500 dark:text-emerald-400 font-extrabold';
              } else {
-               charStyles[i] = range.group === 2 ? 'text-amber-600 font-black' : 'text-red-600 font-black';
+               charStyles[i] = range.group === 2
+                 ? 'text-amber-500 dark:text-amber-400 font-extrabold'
+                 : 'text-rose-500 dark:text-rose-400 font-extrabold';
              }
           } else if (range.type === 'include' && !charStyles[i]) {
-             charStyles[i] = 'text-pink-600 font-bold';
+             charStyles[i] = 'text-fuchsia-500 dark:text-fuchsia-400 font-bold';
           }
         }
       }

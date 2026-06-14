@@ -52,7 +52,7 @@ async function setCache(data: CacheData) {
 
 export async function getNumbers(type: 'ordinary' | 'special' = 'ordinary') {
   // Read cache
-  let cache = await getCache();
+  const cache = await getCache();
 
   // Return empty data if cache doesn't exist
   if (!cache) {
@@ -67,7 +67,7 @@ export async function getNumbers(type: 'ordinary' | 'special' = 'ordinary') {
   const numbers = type === 'special' ? cache.special : cache.ordinary;
   
   // Filter active numbers (seen in last update)
-  const activeNumbers = numbers.filter(n => n.lastSeenAt >= cache!.lastUpdated);
+  const activeNumbers = numbers.filter(n => (n.lastSeenAt ?? 0) >= cache!.lastUpdated);
 
   // Enrich with location data for any missing entries
   // This is a lightweight operation that only fills in gaps
@@ -105,8 +105,8 @@ export async function getTotalNumbersCount() {
   if (!cache) return 0;
   
   // Filter active numbers
-  const activeOrdinary = cache.ordinary.filter(n => n.lastSeenAt >= cache!.lastUpdated);
-  const activeSpecial = cache.special.filter(n => n.lastSeenAt >= cache!.lastUpdated);
+  const activeOrdinary = cache.ordinary.filter(n => (n.lastSeenAt ?? 0) >= cache!.lastUpdated);
+  const activeSpecial = cache.special.filter(n => (n.lastSeenAt ?? 0) >= cache!.lastUpdated);
   
   return activeOrdinary.length + activeSpecial.length;
 }

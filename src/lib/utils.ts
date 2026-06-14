@@ -9,9 +9,10 @@ export type NumberEntry = {
   hkNumber: string;
   mainlandNumber: string;
   addedAt?: number; // Timestamp when first seen
+  lastSeenAt?: number; // Timestamp of the most recent sync that saw this number
   province?: string;
   city?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export function parsePatterns(value: string): string[] {
