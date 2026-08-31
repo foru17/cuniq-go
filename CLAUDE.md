@@ -24,3 +24,8 @@
 - `S3_*`：Cloudflare R2（两个项目共用同一组值）。
 - `NEXT_PUBLIC_APP_CODE`：阿里云号码归属地 API（仅 cuniq 用）。
 - Vercel CLI 已登录（luolei / team zuoluotv）；Cloudflare 仅有 wrangler OAuth（无 DNS 写权限）。
+
+## UI 基准
+
+- cuniq 基准：https://cuniq.zuoluo.tv/ （截图存 `.ui-acceptance/2026-08-31/cuniq-baseline-desktop.png`）
+- cmhk 基准：https://cmhk.zuoluo.tv/ （2026-08-31 首发版即基准，截图存 `.ui-acceptance/2026-08-31/cmhk-home-*.png`）
