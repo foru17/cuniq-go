@@ -23,7 +23,8 @@
 - `CMHK_UPDATE_API_TOKEN`：cmhk-go 更新接口 token（cmhk-go Vercel 项目的 `UPDATE_API_TOKEN` 环境变量与此一致）。
 - `S3_*`：Cloudflare R2（两个项目共用同一组值）。
 - `NEXT_PUBLIC_APP_CODE`：阿里云号码归属地 API（仅 cuniq 用）。
-- Vercel CLI 已登录（luolei / team zuoluotv）；Cloudflare 仅有 wrangler OAuth（无 DNS 写权限）。
+- Vercel CLI 已登录（luolei / team zuoluotv）。
+- Cloudflare DNS（zuoluo.tv, zone `58e8b2341c4ad6e920e8c50346e7f183`）：API Token 在 `~/DEV/telegram-master/.env.deploy` 的 `CLOUDFLARE_API_TOKEN`（有 DNS 写权限）；wrangler OAuth 无 DNS scope，不要用。
 
 ## UI 基准
 
