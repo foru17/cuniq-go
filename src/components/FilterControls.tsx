@@ -5,6 +5,7 @@ import { RotateCcw } from 'lucide-react';
 import { Switch } from '@/components/ui/Switch';
 import { Input } from '@/components/ui/input';
 import { NumberEntry, filterNumbers, cn } from '@/lib/utils';
+import { getCarrier } from '@/lib/carrier';
 
 export type FilterState = {
   include: string;
@@ -26,6 +27,8 @@ type FilterControlsProps = {
   className?: string;
   gridClassName?: string;
 };
+
+const carrier = getCarrier();
 
 const LUCKY_PATTERNS = [
   { value: '', label: '不限' },
@@ -186,45 +189,49 @@ export default function FilterControls({
             />
           </div>
 
-          {/* Switches */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">匹配范围</label>
-            <div className="flex h-8 items-center gap-4">
-              <label className="flex cursor-pointer items-center gap-2">
-                <Switch
-                  checked={filters.matchHk}
-                  onCheckedChange={(checked) => handleChange('matchHk', checked)}
-                  className="scale-75 origin-left"
-                />
-                <span className="text-xs">香港号码</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-2">
-                <Switch
-                  checked={filters.matchMainland}
-                  onCheckedChange={(checked) => handleChange('matchMainland', checked)}
-                  className="scale-75 origin-left"
-                />
-                <span className="text-xs">内地号码</span>
-              </label>
+          {/* Switches (dual-number carriers only) */}
+          {carrier.dualNumber && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">匹配范围</label>
+              <div className="flex h-8 items-center gap-4">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Switch
+                    checked={filters.matchHk}
+                    onCheckedChange={(checked) => handleChange('matchHk', checked)}
+                    className="scale-75 origin-left"
+                  />
+                  <span className="text-xs">香港号码</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Switch
+                    checked={filters.matchMainland}
+                    onCheckedChange={(checked) => handleChange('matchMainland', checked)}
+                    className="scale-75 origin-left"
+                  />
+                  <span className="text-xs">内地号码</span>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Location Chips */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">归属地</label>
-          <div className="flex flex-wrap gap-1.5">
-            {locations.map((loc) => (
-              <FilterChip
-                key={loc.value}
-                label={loc.label}
-                count={locationCounts.get(loc.value) || 0}
-                active={filters.location === loc.value}
-                onClick={() => handleChange('location', loc.value)}
-              />
-            ))}
+        {/* Location Chips (dual-number carriers only) */}
+        {carrier.dualNumber && (
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">归属地</label>
+            <div className="flex flex-wrap gap-1.5">
+              {locations.map((loc) => (
+                <FilterChip
+                  key={loc.value}
+                  label={loc.label}
+                  count={locationCounts.get(loc.value) || 0}
+                  active={filters.location === loc.value}
+                  onClick={() => handleChange('location', loc.value)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Lucky Pattern Chips */}
         <div className="space-y-2 border-t border-border/60 pt-3">

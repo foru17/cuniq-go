@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
+import { getCarrier } from '@/lib/carrier';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://cuniq.zuoluo.tv';
+  const baseUrl = getCarrier().siteUrl;
 
   return [
     {

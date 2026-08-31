@@ -3,6 +3,9 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { getCarrier } from "@/lib/carrier";
+
+const carrier = getCarrier();
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({
@@ -21,17 +24,17 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://cuniq.zuoluo.tv'),
+  metadataBase: new URL(carrier.siteUrl),
   title: {
-    default: 'CUniq Go 月神卡选号神器 - 香港联通一卡双号筛选工具',
-    template: '%s | CUniq Go',
+    default: carrier.metaTitle,
+    template: `%s | ${carrier.siteName}`,
   },
-  description: 'CUniq月神卡选号神器，专为靓号爱好者打造。HK$9/月低成本持有香港+852与内地+86一卡双号，支持实体卡/eSIM。本工具支持多维度靓号筛选（AABB/ABAB/连号/尾号过滤），每15分钟自动同步官网数据，比手动刷号更高效。',
-  keywords: ['CUniq', '月神卡', '香港联通', '一卡双号', '靓号', 'eSIM', '852号码', '86号码', '选号工具', 'AABB', '连号', 'HK$9套餐', '无押金', '香港手机号', '内地身份证'],
+  description: carrier.metaDescription,
+  keywords: carrier.keywords,
   authors: [{ name: 'Luo Lei', url: 'https://luolei.org' }],
   creator: 'Luo Lei',
   publisher: 'Luo Lei',
-  applicationName: 'CUniq Go',
+  applicationName: carrier.siteName,
   generator: 'Next.js',
   referrer: 'origin-when-cross-origin',
   formatDetection: {
@@ -40,29 +43,29 @@ export const metadata: Metadata = {
     telephone: false,
   },
   openGraph: {
-    title: 'CUniq Go 月神卡选号神器 - HK$9/月 一卡双号',
-    description: 'HK$9/月低成本持有香港+852与内地+86一卡双号。支持AABB/连号/尾号过滤等多种靓号筛选，数据实时同步。',
-    url: 'https://cuniq.zuoluo.tv',
-    siteName: 'CUniq Go',
+    title: carrier.ogTitle,
+    description: carrier.ogDescription,
+    url: carrier.siteUrl,
+    siteName: carrier.siteName,
     locale: 'zh_CN',
     type: 'website',
     images: {
       url: '/opengraph-image',
       width: 1200,
       height: 630,
-      alt: 'CUniq Go 月神卡选号神器',
+      alt: carrier.metaTitle,
     },
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CUniq Go 月神卡选号神器 - HK$9/月 一卡双号',
-    description: 'HK$9/月低成本持有香港+852与内地+86一卡双号。支持AABB/连号/尾号过滤等多种靓号筛选。',
+    title: carrier.ogTitle,
+    description: carrier.ogDescription,
     creator: '@luoleiorg',
     images: {
       url: '/twitter-image',
       width: 1200,
       height: 630,
-      alt: 'CUniq Go 月神卡选号神器',
+      alt: carrier.metaTitle,
     },
   },
   robots: {
@@ -78,11 +81,11 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: 'https://cuniq.zuoluo.tv',
+    canonical: carrier.siteUrl,
     languages: {
-      'zh-CN': 'https://cuniq.zuoluo.tv',
-      'zh-HK': 'https://cuniq.zuoluo.tv',
-      'zh-TW': 'https://cuniq.zuoluo.tv',
+      'zh-CN': carrier.siteUrl,
+      'zh-HK': carrier.siteUrl,
+      'zh-TW': carrier.siteUrl,
     },
   },
   verification: {

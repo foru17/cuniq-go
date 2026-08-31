@@ -1,5 +1,17 @@
 import { NumberEntry } from '@/lib/utils';
+import { getCarrier } from '@/lib/carrier';
 import HighlightedNumber from './HighlightedNumber';
+
+const carrier = getCarrier();
+
+function LevelTag({ level }: { level?: string }) {
+  if (!level || level === 'W') return null;
+  return (
+    <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 ring-1 ring-inset ring-amber-500/30 dark:text-amber-400">
+      {level} 级靓号
+    </span>
+  );
+}
 
 type NumberGridProps = {
   numbers: NumberEntry[];
@@ -46,6 +58,70 @@ export default function NumberGrid({
       <div className="rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center text-sm text-muted-foreground">
         <p>没有找到符合条件的号码</p>
         <p className="mt-1 text-xs text-muted-foreground/70">试试调整筛选条件</p>
+      </div>
+    );
+  }
+
+  if (!carrier.dualNumber) {
+    // Single-number carriers (CMHK): one HK number per entry
+    if (viewMode === 'list') {
+      return (
+        <div className="overflow-hidden rounded-xl border border-border bg-card/50">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-muted/50 font-medium text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2.5 text-xs md:px-4 md:py-3 md:text-sm">香港号码 (+852)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {numbers.map((entry, i) => (
+                <tr key={`${entry.hkNumber}-${i}`} className="transition-colors hover:bg-muted/30">
+                  <td className="px-3 py-2.5 font-mono text-base font-bold tracking-tight md:px-4 md:py-3 md:text-lg">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="mr-1 text-sm font-normal md:text-base">🇭🇰</span>
+                      <HighlightedNumber
+                        number={entry.hkNumber}
+                        include={filters.include}
+                        luckyPattern={filters.luckyPattern}
+                      />
+                      <LevelTag level={entry.level} />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 gap-3 pb-10 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+        {numbers.map((entry, i) => (
+          <div
+            key={`${entry.hkNumber}-${i}`}
+            className="group relative overflow-hidden rounded-xl border border-border bg-card/50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:bg-card hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg" role="img" aria-label="Hong Kong">🇭🇰</span>
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">+852</span>
+              </div>
+              <span className="font-mono text-lg font-bold tracking-tight">
+                <HighlightedNumber
+                  number={entry.hkNumber}
+                  include={filters.include}
+                  luckyPattern={filters.luckyPattern}
+                />
+              </span>
+            </div>
+            {entry.level && entry.level !== 'W' && (
+              <div className="mt-2 flex justify-end">
+                <LevelTag level={entry.level} />
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     );
   }

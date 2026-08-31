@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getNumbers, getTotalNumbersCount } from '@/services/numberService';
+import { getCarrier } from '@/lib/carrier';
 import NumberDashboard from '@/components/NumberDashboard';
 import {
   SoftwareAppJsonLd,
@@ -11,17 +12,19 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 60; // Revalidate every 60 seconds
 
+const carrier = getCarrier();
+
 // 页面级元数据
 export const metadata: Metadata = {
-  title: 'CUniq Go 月神卡选号神器 - 香港联通一卡双号筛选工具',
-  description: 'CUniq月神卡选号神器，专为靓号爱好者打造。HK$9/月低成本持有香港+852与内地+86一卡双号，支持实体卡/eSIM。支持多维度靓号筛选（AABB/ABAB/连号/尾号过滤），每15分钟自动同步官网数据。',
+  title: carrier.metaTitle,
+  description: carrier.metaDescription,
   alternates: {
-    canonical: 'https://cuniq.zuoluo.tv',
+    canonical: carrier.siteUrl,
   },
   openGraph: {
-    title: 'CUniq Go 月神卡选号神器 - HK$9/月 一卡双号',
-    description: 'HK$9/月低成本持有香港+852与内地+86一卡双号。支持AABB/连号/尾号过滤等多种靓号筛选，数据实时同步。',
-    url: 'https://cuniq.zuoluo.tv',
+    title: carrier.ogTitle,
+    description: carrier.ogDescription,
+    url: carrier.siteUrl,
     type: 'website',
   },
 };
@@ -52,16 +55,16 @@ export default async function Home({
       
       {/* 网站结构化数据 */}
       <WebSiteJsonLd
-        name="CUniq Go"
-        url="https://cuniq.zuoluo.tv"
-        description="CUniq月神卡选号神器，HK$9/月持有香港+852与内地+86一卡双号。支持AABB/连号/尾号过滤等多种靓号筛选。"
+        name={carrier.siteName}
+        url={carrier.siteUrl}
+        description={carrier.ogDescription}
       />
-      
+
       {/* 软件应用结构化数据 */}
       <SoftwareAppJsonLd
-        name="CUniq Go 月神卡选号神器"
-        description="CUniq月神卡选号神器，HK$9/月持有香港+852与内地+86一卡双号。支持AABB/连号/尾号过滤等多种靓号筛选，数据实时同步。"
-        url="https://cuniq.zuoluo.tv"
+        name={carrier.metaTitle}
+        description={carrier.metaDescription}
+        url={carrier.siteUrl}
         authorName="Luo Lei"
         authorUrl="https://luolei.org"
         datePublished={datePublished}

@@ -1,8 +1,11 @@
 import { ImageResponse } from 'next/og';
+import { getCarrier } from '@/lib/carrier';
+
+const carrier = getCarrier();
 
 export const runtime = 'edge';
 
-export const alt = 'CUniq Go 月神卡选号神器';
+export const alt = carrier.metaTitle;
 export const size = {
   width: 1200,
   height: 630,
@@ -56,7 +59,7 @@ export default async function Image() {
               color: 'transparent',
             }}
           >
-            CUniq Go
+            {carrier.ogImage.brand}
           </div>
         </div>
         <div
@@ -68,7 +71,7 @@ export default async function Image() {
             textAlign: 'center',
           }}
         >
-          月神卡选号神器
+          {carrier.ogImage.subtitle}
         </div>
         <div
           style={{
@@ -79,7 +82,7 @@ export default async function Image() {
             lineHeight: 1.5,
           }}
         >
-          HK$9/月 · 一卡双号 (+852/+86) · 靓号筛选工具
+          {carrier.ogImage.tagline}
         </div>
         <div
           style={{

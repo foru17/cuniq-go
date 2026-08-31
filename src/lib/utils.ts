@@ -12,6 +12,7 @@ export type NumberEntry = {
   lastSeenAt?: number; // Timestamp of the most recent sync that saw this number
   province?: string;
   city?: string;
+  level?: string; // Carrier-specific tier (e.g. CMHK W/C/D)
   [key: string]: unknown;
 };
 

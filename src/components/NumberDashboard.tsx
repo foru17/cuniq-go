@@ -3,10 +3,11 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useMemo, useTransition } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import FilterControls, { FilterState } from '@/components/FilterControls';
 import NumberGrid from '@/components/NumberGrid';
 import { NumberEntry, filterNumbers, cn } from '@/lib/utils';
+import { getCarrier } from '@/lib/carrier';
 import DashboardHeader from '@/components/DashboardHeader';
 import PromoSection from '@/components/PromoSection';
 
@@ -17,15 +18,19 @@ type NumberDashboardProps = {
   totalCount: number;
 };
 
+const carrier = getCarrier();
+
 const DEFAULT_FILTERS: FilterState = {
   include: '',
   exclude: '',
   suffix: '',
   luckyPattern: '',
   matchHk: true,
-  matchMainland: true,
+  matchMainland: carrier.dualNumber,
   location: '',
 };
+
+const PAGE_SIZE = 120;
 
 export default function NumberDashboard({ initialNumbers, lastUpdated, currentType, totalCount }: NumberDashboardProps) {
   const router = useRouter();
@@ -35,6 +40,7 @@ export default function NumberDashboard({ initialNumbers, lastUpdated, currentTy
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [page, setPage] = useState(1);
 
   // While navigating (type switch) the server refetches; clear the grid so the
   // skeleton shows until fresh data arrives. The sidebar keeps the current data.
@@ -55,6 +61,22 @@ export default function NumberDashboard({ initialNumbers, lastUpdated, currentTy
   };
 
   const filteredNumbers = useMemo(() => filterNumbers(numbers, filters), [numbers, filters]);
+
+  // Reset to the first page whenever filters or the data set change
+  // (state adjusted during render, per React guidance, to avoid an extra pass)
+  const pageResetKey = `${currentType}|${numbers.length}|${JSON.stringify(filters)}`;
+  const [prevPageResetKey, setPrevPageResetKey] = useState(pageResetKey);
+  if (pageResetKey !== prevPageResetKey) {
+    setPrevPageResetKey(pageResetKey);
+    setPage(1);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(filteredNumbers.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedNumbers = useMemo(
+    () => filteredNumbers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [filteredNumbers, safePage]
+  );
 
   const handleReset = () => {
     setFilters(DEFAULT_FILTERS);
@@ -127,7 +149,7 @@ export default function NumberDashboard({ initialNumbers, lastUpdated, currentTy
             </div>
 
             <NumberGrid
-              numbers={filteredNumbers}
+              numbers={pagedNumbers}
               loading={isPending}
               viewMode={viewMode}
               filters={{
@@ -139,6 +161,36 @@ export default function NumberDashboard({ initialNumbers, lastUpdated, currentTy
                 location: filters.location,
               }}
             />
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <nav
+                className="flex items-center justify-center gap-2 pb-8"
+                aria-label="分页"
+              >
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                  aria-label="上一页"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  上一页
+                </button>
+                <span className="px-2 text-xs font-medium tabular-nums text-muted-foreground">
+                  第 <span className="font-bold text-foreground">{safePage}</span> / {totalPages} 页
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                  aria-label="下一页"
+                >
+                  下一页
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </nav>
+            )}
           </div>
         </div>
       </div>

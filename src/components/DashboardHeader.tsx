@@ -3,6 +3,9 @@
 import Image from 'next/image';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useRouter } from 'next/navigation';
+import { getCarrier } from '@/lib/carrier';
+
+const carrier = getCarrier();
 
 export default function DashboardHeader() {
   const router = useRouter();
@@ -19,21 +22,21 @@ export default function DashboardHeader() {
           onClick={handleLogoClick}
           title="点击刷新页面"
         >
-          <Image 
-            src="/logo.svg" 
-            alt="CUniq Logo" 
-            width={48} 
-            height={48} 
+          <Image
+            src={carrier.logoSrc}
+            alt={carrier.logoAlt}
+            width={48}
+            height={48}
             className="w-full h-full object-contain dark:invert"
           />
         </div>
 
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-linear-to-br from-foreground to-muted-foreground bg-clip-text text-transparent">
-            CUniq Go 月神卡 选号神器
+            {carrier.appName}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-medium">
-           中国联通香港/内地一卡双号筛选工具
+           {carrier.headerSubtitle}
           </p>
         </div>
       </div>

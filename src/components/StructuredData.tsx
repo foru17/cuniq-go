@@ -1,6 +1,7 @@
 'use client';
 
 import Script from 'next/script';
+import { getCarrier } from '@/lib/carrier';
 
 interface SoftwareAppData {
   name: string;
@@ -134,12 +135,13 @@ export function BreadcrumbJsonLd({
 
 // 组织结构化数据
 export function OrganizationJsonLd() {
+  const carrier = getCarrier();
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'CUniq Go',
-    url: 'https://cuniq.zuoluo.tv',
-    logo: 'https://cuniq.zuoluo.tv/logo.svg',
+    name: carrier.siteName,
+    url: carrier.siteUrl,
+    logo: `${carrier.siteUrl}${carrier.logoSrc}`,
     sameAs: [
       'https://github.com/foru17',
     ],

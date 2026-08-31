@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getCarrier } from '@/lib/carrier';
+
+const carrier = getCarrier();
 
 export const metadata: Metadata = {
-  title: '页面未找到 | CUniq Go',
-  description: '抱歉，您访问的页面不存在。返回 CUniq Go 月神卡选号神器首页。',
+  title: `页面未找到 | ${carrier.siteName}`,
+  description: `抱歉，您访问的页面不存在。返回 ${carrier.metaTitle} 首页。`,
   robots: {
     index: false,
     follow: true,
@@ -21,7 +24,7 @@ export default function NotFound() {
         <p className="text-muted-foreground mb-8 max-w-md mx-auto">
           抱歉，您访问的页面不存在或已被移除。
           <br />
-          返回首页继续使用 CUniq Go 月神卡选号工具。
+          返回首页继续使用 {carrier.appName}。
         </p>
         <Link
           href="/"

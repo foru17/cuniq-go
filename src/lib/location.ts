@@ -4,10 +4,6 @@ const LOCATION_CACHE_FILE = 'location_cache.json';
 const API_URL = 'https://imobile.market.alicloudapi.com/mobile/query';
 const APP_CODE = process.env.NEXT_PUBLIC_APP_CODE;
 
-if (!APP_CODE) {
-  throw new Error('NEXT_PUBLIC_APP_CODE environment variable is not set');
-}
-
 type LocationData = {
   prov: string;
   city: string;
@@ -53,6 +49,10 @@ async function saveCache(cache: LocationCache) {
 }
 
 export async function getLocation(number: string): Promise<LocationData | null> {
+  if (!APP_CODE) {
+    console.warn('[Location] NEXT_PUBLIC_APP_CODE not set, skipping lookup');
+    return null;
+  }
   if (!number || number.length < 7) return null;
 
   // Extract first 7 digits (area_num)

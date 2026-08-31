@@ -1,58 +1,44 @@
+import { after } from 'next/server';
 import { getLocation } from '@/lib/location';
-import { uploadToR2 } from '@/lib/s3';
-import { NumberEntry } from '@/lib/utils';
+import { getCarrier } from '@/lib/carrier';
+import { readCache, writeCache } from './cacheStore';
+import { CacheData } from './types';
+import { runUpdate } from './updateService';
 
-// Cache configuration
-const CACHE_FILENAME = 'cache.json';
+export type { CacheData };
 
-export type CacheData = {
-  ordinary: NumberEntry[];
-  special: NumberEntry[];
-  lastUpdated: number;
-};
+// Per-instance guard so one lambda doesn't queue overlapping refreshes
+let refreshInFlight = false;
 
-// Helper to read cache from R2 (Public URL)
-async function getCache(): Promise<CacheData | null> {
-  try {
-    const domain = process.env.S3_DOMAIN_HOST?.replace(/\/$/, '');
-    if (!domain) {
-      console.warn('[getCache] S3_DOMAIN_HOST not set');
-      return null;
+// For carriers without an external cron (cmhk), page views trigger a
+// background refresh once the cache goes stale. runUpdate re-checks
+// freshness itself, so concurrent instances stay mostly idempotent.
+function maybeScheduleRefresh(cache: CacheData | null) {
+  const carrier = getCarrier();
+  if (!carrier.selfRefresh || refreshInFlight) return;
+
+  const lastUpdated = cache?.lastUpdated ?? 0;
+  if (Date.now() - lastUpdated < carrier.refreshIntervalMs) return;
+
+  refreshInFlight = true;
+  after(async () => {
+    try {
+      await runUpdate({ force: false });
+    } catch (error) {
+      console.error('[numberService] Background refresh failed:', error);
+    } finally {
+      refreshInFlight = false;
     }
-
-    const url = `${domain}/${CACHE_FILENAME}`;
-    console.log(`[getCache] Fetching from: ${url}`);
-    
-    const response = await fetch(url, { 
-      cache: 'no-store',
-      headers: {
-        'User-Agent': 'CUniq-Next-Server/1.0'
-      }
-    });
-    
-    if (response.ok) {
-      return await response.json();
-    } else {
-      console.warn(`[getCache] Failed to fetch: ${response.status}`);
-    }
-  } catch (error) {
-    console.error('Error reading cache from R2:', error);
-  }
-  return null;
-}
-
-// Helper to write cache to R2 (used for location enrichment)
-async function setCache(data: CacheData) {
-  try {
-    await uploadToR2(CACHE_FILENAME, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error('Error writing cache to R2:', error);
-  }
+  });
 }
 
 export async function getNumbers(type: 'ordinary' | 'special' = 'ordinary') {
+  const carrier = getCarrier();
+
   // Read cache
-  const cache = await getCache();
+  const cache = await readCache();
+
+  maybeScheduleRefresh(cache);
 
   // Return empty data if cache doesn't exist
   if (!cache) {
@@ -65,33 +51,32 @@ export async function getNumbers(type: 'ordinary' | 'special' = 'ordinary') {
 
   // Get requested data type
   const numbers = type === 'special' ? cache.special : cache.ordinary;
-  
-  // Filter active numbers (seen in last update)
-  const activeNumbers = numbers.filter(n => (n.lastSeenAt ?? 0) >= cache!.lastUpdated);
 
-  // Enrich with location data for any missing entries
-  // This is a lightweight operation that only fills in gaps
-  let hasUpdates = false;
-  
-  // We process location updates in background or await them?
-  // For RSC, we probably want to await to show correct data, 
-  // but we don't want to block too long.
-  // Given the previous implementation awaited, we will await here too.
-  await Promise.all(activeNumbers.map(async (entry) => {
-    if (entry.mainlandNumber && (!entry.province || !entry.city)) {
-      const loc = await getLocation(entry.mainlandNumber);
-      if (loc) {
-        entry.province = loc.prov;
-        entry.city = loc.city;
-        hasUpdates = true;
+  // Filter active numbers (seen recently — window is 0 for cuniq)
+  const activeNumbers = numbers.filter(
+    n => (n.lastSeenAt ?? 0) >= cache.lastUpdated - carrier.activeWindowMs
+  );
+
+  // Enrich with location data for any missing entries (dual-number carriers only)
+  if (carrier.dualNumber) {
+    let hasUpdates = false;
+
+    await Promise.all(activeNumbers.map(async (entry) => {
+      if (entry.mainlandNumber && (!entry.province || !entry.city)) {
+        const loc = await getLocation(entry.mainlandNumber);
+        if (loc) {
+          entry.province = loc.prov;
+          entry.city = loc.city;
+          hasUpdates = true;
+        }
       }
-    }
-  }));
+    }));
 
-  // Save cache to persist any newly enriched location data
-  if (hasUpdates) {
-    // We can fire-and-forget this update to not block the response
-    setCache(cache).catch(err => console.error('Background cache update failed:', err));
+    // Save cache to persist any newly enriched location data
+    if (hasUpdates) {
+      // Fire-and-forget so the response isn't blocked
+      writeCache(cache).catch(err => console.error('Background cache update failed:', err));
+    }
   }
 
   return {
@@ -101,12 +86,13 @@ export async function getNumbers(type: 'ordinary' | 'special' = 'ordinary') {
 }
 
 export async function getTotalNumbersCount() {
-  const cache = await getCache();
+  const carrier = getCarrier();
+  const cache = await readCache();
   if (!cache) return 0;
-  
-  // Filter active numbers
-  const activeOrdinary = cache.ordinary.filter(n => (n.lastSeenAt ?? 0) >= cache!.lastUpdated);
-  const activeSpecial = cache.special.filter(n => (n.lastSeenAt ?? 0) >= cache!.lastUpdated);
-  
+
+  const threshold = cache.lastUpdated - carrier.activeWindowMs;
+  const activeOrdinary = cache.ordinary.filter(n => (n.lastSeenAt ?? 0) >= threshold);
+  const activeSpecial = cache.special.filter(n => (n.lastSeenAt ?? 0) >= threshold);
+
   return activeOrdinary.length + activeSpecial.length;
 }
