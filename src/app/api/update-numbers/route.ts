@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { runUpdate } from '@/services/updateService';
 
-// A run makes up to MAX_UPSTREAM_CALLS_PER_RUN upstream requests with pacing
-// delays; the platform default (10s) is not enough.
+// A run makes up to the carrier's `maxUpstreamCalls` upstream requests with
+// pacing delays; the platform default (10s) is not enough.
 export const maxDuration = 60;
 
 type AuthOutcome = { ok: true } | { ok: false; status: number; error: string };

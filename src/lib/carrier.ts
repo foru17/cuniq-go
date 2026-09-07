@@ -37,6 +37,8 @@ export type CarrierConfig = {
    * Only meaningful for carriers whose pool window is > 0.
    */
   verifyBudget: number;
+  /** Hard ceiling on upstream HTTP calls for one update run (fetch + verify) */
+  maxUpstreamCalls: number;
   /** Trigger a background data refresh from page views when cache is stale */
   selfRefresh: boolean;
   refreshIntervalMs: number;
@@ -67,11 +69,15 @@ const CARRIERS: Record<CarrierId, CarrierConfig> = {
       subtitle: '月神卡选号神器',
       tagline: 'HK$9/月 · 一卡双号 (+852/+86) · 靓号筛选工具',
     },
-    // Both cuniq pools saturate within a single sync (10 batches), so only
-    // numbers seen in the latest run are kept — nothing can go stale.
-    ordinaryWindowMs: 0,
-    specialWindowMs: 0,
-    verifyBudget: 0,
+    // 10 batches cover most, but not all, of each cuniq pool: consecutive runs
+    // saw the special pool swing between 723 and 906 numbers. A window of 0
+    // made those still-on-sale numbers vanish and reappear every 15 minutes,
+    // so keep three runs' worth and let the per-number re-check prune what
+    // was actually sold.
+    ordinaryWindowMs: 45 * 60 * 1000,
+    specialWindowMs: 45 * 60 * 1000,
+    verifyBudget: 40,
+    maxUpstreamCalls: 60,
     selfRefresh: false,
     refreshIntervalMs: 15 * 60 * 1000,
   },
@@ -106,6 +112,7 @@ const CARRIERS: Record<CarrierId, CarrierConfig> = {
     ordinaryWindowMs: 3 * 60 * 60 * 1000,
     specialWindowMs: 0,
     verifyBudget: 40,
+    maxUpstreamCalls: 50,
     selfRefresh: true,
     refreshIntervalMs: 15 * 60 * 1000,
   },

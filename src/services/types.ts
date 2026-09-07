@@ -40,6 +40,9 @@ export type CarrierFetchResult = {
  */
 export type NumberStatus = 'available' | 'gone' | 'unknown';
 
+/** The two pools every carrier exposes */
+export type PoolName = 'ordinary' | 'special';
+
 export type VerifyResult = {
   statuses: Map<string, NumberStatus>;
   /** Upstream HTTP calls actually spent */

@@ -1,14 +1,14 @@
-# 定时刷新两个站点的号池缓存。
+# 手动刷新两个站点的号池缓存 —— 应急按钮，不是主定时器。
 #
-# 为什么不用 Vercel Cron：zuoluotv team 是 Hobby 计划，Vercel Cron 每天只触发
-# 一次，达不到 15 分钟的同步频率（页面上写的也是"每 15 分钟自动同步"）。
-# cmhk 站另有页面访问触发的后台自刷新作为兜底，本工作流是主要触发源。
+# 主定时器在 sjc 服务器上（每 15 分钟）：
+#   cuniq  宝塔面板计划任务 /www/server/cron/d3dbc997ddef443082f39fb781a79f0d
+#   cmhk   /etc/cron.d/cmhk-update-numbers
+# 这里不挂 schedule：GitHub 的 cron 会延迟，且公开仓库 60 天无提交就会自动
+# 停用定时工作流；两套调度同时跑还会白白翻倍打上游。
+# Vercel Cron 也用不了 —— zuoluotv team 是 Hobby 计划，每天只触发一次。
 name: Refresh number pools
 
 on:
-  schedule:
-    # GitHub 的定时器在高峰时可能延迟几分钟，对 15 分钟的同步节奏可以接受
-    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 concurrency:

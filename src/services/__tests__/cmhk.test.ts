@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// carrier.ts picks the carrier from the env at module load
+vi.stubEnv('NEXT_PUBLIC_CARRIER', 'cmhk');
+
 import {
-  MAX_UPSTREAM_CALLS_PER_RUN,
   ORDINARY_BATCH_COUNT,
   VERIFY_BUDGET,
   verifyCmhkNumbers,
@@ -112,10 +115,15 @@ describe('verifyCmhkNumbers', () => {
   });
 });
 
+const { getCarrier } = await import('@/lib/carrier');
+const CARRIER_MAX_UPSTREAM_CALLS = getCarrier().maxUpstreamCalls;
+
 describe('cmhk upstream call budget', () => {
   it('keeps ordinary + special + verify calls within the per-run cap', () => {
     // ORDINARY_BATCH_COUNT ordinary batches + 2 special levels (C, D) + the
     // verify budget must never exceed the hard per-run cap.
-    expect(ORDINARY_BATCH_COUNT + 2 + VERIFY_BUDGET).toBeLessThanOrEqual(MAX_UPSTREAM_CALLS_PER_RUN);
+    // 8 ordinary batches + 2 premium levels + the verify budget must fit
+    // inside the carrier's per-run ceiling, which is what runUpdate enforces.
+    expect(ORDINARY_BATCH_COUNT + 2 + VERIFY_BUDGET).toBeLessThanOrEqual(CARRIER_MAX_UPSTREAM_CALLS);
   });
 });

@@ -1,4 +1,4 @@
-import { CarrierFetchResult, RawNumber } from '../types';
+import { CarrierFetchResult, NumberStatus, PoolName, RawNumber, VerifyResult } from '../types';
 
 const ORDINARY_URL = "https://store.cuniq.com/mall/betternumber/shopChooseNum?queryNum=&queryFlag=4&maxNum=160&goodsMonthPlanId=9003031&lang=1&scenesType=1&noToken=true&busType=1&contractPriceId=105900476&tenantId=2&application=1&langId=1";
 const SPECIAL_URL = "https://store.cuniq.com/mall/betternumber/shopChooseNum?queryNum=&queryFlag=4&maxNum=160&goodsMonthPlanId=900300&lang=1&scenesType=1&noToken=true&busType=1&contractPriceId=1053103&tenantId=2&application=1&langId=1";
@@ -32,6 +32,10 @@ const SPECIAL_HEADERS = {
 const BATCH_COUNT = 10; // Number of requests per update
 const BATCH_DELAY_MS = 200; // Delay between requests in milliseconds
 const REQUEST_TIMEOUT_MS = 10_000; // A hung request must not eat the function budget
+
+// Verification pacing — the store's number picker is a public endpoint
+const VERIFY_CONCURRENCY = 3;
+const VERIFY_DELAY_MS = 200;
 
 async function fetchFromCUniq(url: string, headers: Record<string, string>) {
   console.log(`Fetching from CUniq: ${url}`);
@@ -114,4 +118,72 @@ export async function fetchCuniqData(): Promise<CarrierFetchResult> {
     specialAuthoritative: special.length > 0,
     upstreamCalls: BATCH_COUNT * 2,
   };
+}
+
+/**
+ * Re-check individual numbers against the store.
+ *
+ * `queryNum=<8 digits>` turns the picker into an exact lookup: the number
+ * comes back while it is still on sale and the list is empty once it is
+ * taken. The two pools sit behind different plan ids, so a number has to be
+ * checked against the same URL it was listed from.
+ */
+export async function verifyCuniqNumbers(
+  numbers: string[],
+  budget: number,
+  pool: PoolName
+): Promise<VerifyResult> {
+  const baseUrl = pool === 'special' ? SPECIAL_URL : ORDINARY_URL;
+  const headers = pool === 'special' ? SPECIAL_HEADERS : ORDINARY_HEADERS;
+
+  const statuses = new Map<string, NumberStatus>();
+  const targets = numbers.slice(0, Math.max(0, budget));
+  let calls = 0;
+  let aborted = false;
+
+  for (let i = 0; i < targets.length; i += VERIFY_CONCURRENCY) {
+    if (aborted) break;
+    const slice = targets.slice(i, i + VERIFY_CONCURRENCY);
+
+    await Promise.all(
+      slice.map(async (num) => {
+        const url = baseUrl.replace('queryNum=', `queryNum=${encodeURIComponent(num)}`);
+        calls++;
+        try {
+          const response = await fetch(url, {
+            headers,
+            method: 'GET',
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          });
+          if (!response.ok) throw new Error(`CUniq API error: ${response.status}`);
+
+          const json = await response.json();
+          // A missing list is a malformed answer, not "this number is gone"
+          if (!Array.isArray(json.data)) throw new Error('CUniq API returned no data array');
+
+          const found = json.data.some(
+            (item: RawNumber) => (item.hkNumber || item.number) === num
+          );
+          statuses.set(num, found ? 'available' : 'gone');
+        } catch (error) {
+          console.error(`[CUniq] Verify error for ${num}:`, error);
+          // Upstream is unhappy — stop spending the budget on doomed calls
+          aborted = true;
+          statuses.set(num, 'unknown');
+        }
+      })
+    );
+
+    if (!aborted && i + VERIFY_CONCURRENCY < targets.length) {
+      await new Promise((resolve) => setTimeout(resolve, VERIFY_DELAY_MS));
+    }
+  }
+
+  const gone = [...statuses.values()].filter(s => s === 'gone').length;
+  console.log(
+    `[CUniq] Verified ${statuses.size}/${targets.length} ${pool} numbers in ${calls} calls: ` +
+    `${gone} gone${aborted ? ' (aborted early after an upstream error)' : ''}`
+  );
+
+  return { statuses, calls };
 }

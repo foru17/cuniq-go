@@ -23,11 +23,10 @@ const ORDINARY_LEVEL = 'W';
 const SPECIAL_LEVELS = ['C', 'D'];
 
 // Hard caps — keep the number of upstream calls bounded per update run.
-// MAX_UPSTREAM_CALLS_PER_RUN is the contract the whole update honours:
-// ORDINARY_BATCH_COUNT + SPECIAL_LEVELS.length + VERIFY_BUDGET must fit in it.
+// ORDINARY_BATCH_COUNT + SPECIAL_LEVELS.length + VERIFY_BUDGET must fit inside
+// the carrier's `maxUpstreamCalls`, which is the ceiling the update enforces.
 export const ORDINARY_BATCH_COUNT = 8;
 export const VERIFY_BUDGET = 40;
-export const MAX_UPSTREAM_CALLS_PER_RUN = 50;
 const BATCH_DELAY_MS = 300;
 // A hung upstream request must not eat the whole 60s function budget
 const REQUEST_TIMEOUT_MS = 10_000;

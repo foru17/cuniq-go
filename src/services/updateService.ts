@@ -2,10 +2,10 @@ import { getLocation } from '@/lib/location';
 import { getCarrier } from '@/lib/carrier';
 import { NumberEntry } from '@/lib/utils';
 import { readCache, writeCache } from './cacheStore';
-import { CacheData, NumberStatus } from './types';
+import { CacheData, NumberStatus, PoolName } from './types';
 import { applyVerification, isPoolCollapse, KEEP_ALL, mergeNumbers, unseenSince } from './merge';
-import { fetchCuniqData } from './sources/cuniq';
-import { fetchCmhkData, MAX_UPSTREAM_CALLS_PER_RUN, verifyCmhkNumbers } from './sources/cmhk';
+import { fetchCuniqData, verifyCuniqNumbers } from './sources/cuniq';
+import { fetchCmhkData, verifyCmhkNumbers } from './sources/cmhk';
 
 export type UpdateResult = {
   success: boolean;
@@ -24,7 +24,7 @@ export type UpdateResult = {
   };
 };
 
-type Verifier = (numbers: string[], budget: number) => Promise<{
+type Verifier = (numbers: string[], budget: number, pool: PoolName) => Promise<{
   statuses: Map<string, NumberStatus>;
   calls: number;
 }>;
@@ -107,21 +107,36 @@ export async function runUpdate({
   // 4. Re-check the numbers this run did not see. Only worth doing for pools
   //    kept alive by a window; a zero-window pool has no survivors to check.
   const verification = { checked: 0, confirmed: 0, removed: 0 };
-  const verifier: Verifier | null = carrier.id === 'cmhk' ? verifyCmhkNumbers : null;
+  const verifier: Verifier = carrier.id === 'cmhk' ? verifyCmhkNumbers : verifyCuniqNumbers;
+  const windows: Record<PoolName, number> = {
+    ordinary: carrier.ordinaryWindowMs,
+    special: specialAuthoritative ? carrier.specialWindowMs : 0,
+  };
 
-  if (verifier && carrier.verifyBudget > 0 && carrier.ordinaryWindowMs > 0) {
-    const budget = Math.max(0, Math.min(carrier.verifyBudget, MAX_UPSTREAM_CALLS_PER_RUN - upstreamCalls));
-    const candidates = unseenSince(cache.ordinary, updateTime).slice(0, budget);
+  const poolsToVerify = (['ordinary', 'special'] as const).filter(p => windows[p] > 0);
 
-    if (candidates.length > 0) {
-      const { statuses, calls } = await verifier(candidates.map(n => n.hkNumber), budget);
-      upstreamCalls += calls;
-      const applied = applyVerification(cache.ordinary, statuses, updateTime);
-      cache.ordinary = applied.entries;
-      verification.checked = statuses.size;
-      verification.confirmed = applied.confirmed;
-      verification.removed = applied.removed;
-    }
+  for (const [index, pool] of poolsToVerify.entries()) {
+    if (carrier.verifyBudget <= 0) break;
+
+    // Share what is left of the budget evenly with the pools still to come,
+    // so a large first pool cannot starve the second one.
+    const budgetLeft = Math.min(
+      carrier.verifyBudget - verification.checked,
+      carrier.maxUpstreamCalls - upstreamCalls
+    );
+    const budget = Math.max(0, Math.ceil(budgetLeft / (poolsToVerify.length - index)));
+    if (budget === 0) break;
+
+    const candidates = unseenSince(cache[pool], updateTime).slice(0, budget);
+    if (candidates.length === 0) continue;
+
+    const { statuses, calls } = await verifier(candidates.map(n => n.hkNumber), budget, pool);
+    upstreamCalls += calls;
+    const applied = applyVerification(cache[pool], statuses, updateTime);
+    cache[pool] = applied.entries;
+    verification.checked += statuses.size;
+    verification.confirmed += applied.confirmed;
+    verification.removed += applied.removed;
   }
 
   cache.lastUpdated = updateTime;
