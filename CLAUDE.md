@@ -19,7 +19,7 @@
 - **兜底**：靓号池任一等级抓取失败 → 该轮保留全部旧靓号（`KEEP_ALL`）**并把它们的 `lastSeenAt` 推到本轮**——只留在缓存里不够，读取侧同样按 0 窗口过滤，不续期的话页面上会全部消失。活跃号数量相比上轮塌陷到 30% 以下则整轮拒绝写缓存（`isPoolCollapse`），确认上游真的缩池时用 `?ignore_collapse=1` 越过。
 - 上游响应里 `numberList` 不是数组一律当作抓取失败，绝不当成"号池空了"——否则一轮能误删 40 个号。所有上游请求带 10s 超时，避免单个挂死请求吃满 60s 函数预算。
 - 数据更新触发：`/api/update-numbers` 同时支持 `POST`（手动，Bearer `UPDATE_API_TOKEN`）和 `GET`（定时器，Bearer `UPDATE_API_TOKEN` 或 `CRON_SECRET`）。
-  - **主定时器在 sjc 服务器的宝塔面板计划任务里**（`ssh sjc`，root crontab，脚本名是哈希）：cuniq 是 `/www/server/cron/d3dbc997ddef443082f39fb781a79f0d`，`*/15 * * * *`；cmhk 是 `/etc/cron.d/cmhk-update-numbers`（手加的，不走面板，避免改动面板托管的 crontab）。日志在同目录 `.log`。
+  - **主定时器在 sjc 服务器的宝塔面板计划任务里**（`ssh sjc`，root crontab，脚本名是哈希）：cuniq 是 `/www/server/cron/d3dbc997ddef443082f39fb781a79f0d`，`*/15 * * * *`；cmhk 是 `/etc/cron.d/cmhk-update-numbers` → `/usr/local/bin/cmhk-update.sh`（手加的，不走面板，避免改动面板托管的 crontab），日志 `/var/log/cuniq/cmhk-update.log`。**坑**：crontab 里 `%` 是特殊字符会把命令截断，所以 `curl -w '%{http_code}'` 必须包在脚本里而不能直接写进 cron 行。
   - 仓库里还有 `.github/workflows/refresh-numbers.yml`，只保留手动 `workflow_dispatch` 作为应急按钮（token 在仓库 secrets `CUNIQ_UPDATE_API_TOKEN` / `CMHK_UPDATE_API_TOKEN`）。GitHub 的 cron 会延迟且公开仓库 60 天无提交会自动停用，所以不做主力。
   - cmhk 另有页面访问触发的 `after()` 自刷新兜底（缓存 >15 分钟才触发）。
 - **两个站都开了 Vercel 的 bot 挑战**：从大陆 IP 用 curl 访问会拿到 `HTTP 403` + `x-vercel-mitigated: challenge`（连首页都是），海外出口（GitHub Actions runner、Surge 代理 127.0.0.1:6152）则正常 200。本机调试线上接口一律加 `-x http://127.0.0.1:6152`。
