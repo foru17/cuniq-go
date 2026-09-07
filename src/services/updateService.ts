@@ -2,87 +2,36 @@ import { getLocation } from '@/lib/location';
 import { getCarrier } from '@/lib/carrier';
 import { NumberEntry } from '@/lib/utils';
 import { readCache, writeCache } from './cacheStore';
-import { CacheData, RawNumber } from './types';
+import { CacheData, NumberStatus } from './types';
+import { applyVerification, isPoolCollapse, KEEP_ALL, mergeNumbers, unseenSince } from './merge';
 import { fetchCuniqData } from './sources/cuniq';
-import { fetchCmhkData } from './sources/cmhk';
-
-/**
- * Merge new numbers with cached ones.
- * Entries not present in the incoming batch are kept as long as they were
- * seen within `keepWindowMs` (their lastSeenAt is left untouched). With a
- * window of 0 (cuniq) only currently-seen numbers survive — the source
- * returns its full pool each sync. CMHK returns a random batch per call,
- * so recently-seen numbers are retained for a few hours.
- */
-function mergeNumbers(
-  existing: NumberEntry[],
-  incoming: RawNumber[],
-  updateTime: number,
-  keepWindowMs: number
-): NumberEntry[] {
-  const existingMap = new Map(existing.map(n => [n.hkNumber, n]));
-  const merged: NumberEntry[] = [];
-  const mergedKeys = new Set<string>();
-
-  for (const item of incoming) {
-    const hkNumber = item.number || item.hkNumber;
-    if (!hkNumber || mergedKeys.has(hkNumber)) continue;
-    mergedKeys.add(hkNumber);
-
-    // Normalize mainland number
-    let mainlandNumber = item.mainlandNumber || item.mcNumber || item.mainland || item.mainland_number || '';
-
-    // If mainland number is missing or empty, try to find it in existing cache if hkNumber matches
-    if (!mainlandNumber && existingMap.has(hkNumber)) {
-        mainlandNumber = existingMap.get(hkNumber)?.mainlandNumber || '';
-    }
-
-    const existingEntry = existingMap.get(hkNumber);
-
-    if (existingEntry) {
-      // Update lastSeenAt
-      merged.push({
-        ...existingEntry,
-        mainlandNumber: mainlandNumber || existingEntry.mainlandNumber,
-        level: (item.level as string) || existingEntry.level,
-        lastSeenAt: updateTime,
-      });
-    } else {
-      // New entry — spread raw payload first so the computed/normalized
-      // fields below always win (a raw `hkNumber: undefined` must not clobber it).
-      merged.push({
-        ...item,
-        hkNumber,
-        mainlandNumber,
-        addedAt: updateTime,
-        lastSeenAt: updateTime,
-      });
-    }
-  }
-
-  if (keepWindowMs > 0) {
-    for (const entry of existing) {
-      if (mergedKeys.has(entry.hkNumber)) continue;
-      if ((entry.lastSeenAt ?? 0) >= updateTime - keepWindowMs) {
-        merged.push(entry);
-      }
-    }
-  }
-
-  return merged;
-}
+import { fetchCmhkData, MAX_UPSTREAM_CALLS_PER_RUN, verifyCmhkNumbers } from './sources/cmhk';
 
 export type UpdateResult = {
   success: boolean;
   skipped?: boolean;
+  /** Why the run refused to write, when it did */
+  reason?: 'upstream_empty' | 'pool_collapse';
   timestamp: number;
   duration?: string;
   stats?: {
     ordinary: { previous: number; current: number; active: number; new: number };
     special: { previous: number; current: number; active: number; new: number };
     locationEnriched: number;
+    /** One-by-one upstream re-checks of numbers this run did not see */
+    verification: { checked: number; confirmed: number; removed: number };
+    upstreamCalls: number;
   };
 };
+
+type Verifier = (numbers: string[], budget: number) => Promise<{
+  statuses: Map<string, NumberStatus>;
+  calls: number;
+}>;
+
+function activeCount(entries: NumberEntry[], reference: number, windowMs: number): number {
+  return entries.filter(n => (n.lastSeenAt ?? 0) >= reference - windowMs).length;
+}
 
 /**
  * Fetch latest numbers from the carrier's upstream API and refresh the cache.
@@ -109,30 +58,79 @@ export async function runUpdate({ force = true }: { force?: boolean } = {}): Pro
     ordinary: cache.ordinary.length,
     special: cache.special.length,
   };
+  const previousActive = {
+    ordinary: activeCount(cache.ordinary, cache.lastUpdated, carrier.ordinaryWindowMs),
+    special: activeCount(cache.special, cache.lastUpdated, carrier.specialWindowMs),
+  };
 
   // Use a single timestamp for this update cycle to ensure consistency
   const updateTime = Date.now();
 
   // 2. Fetch fresh data from the carrier API
-  const { ordinary: ordinaryData, special: specialData } =
-    carrier.id === 'cmhk' ? await fetchCmhkData() : await fetchCuniqData();
+  const {
+    ordinary: ordinaryData,
+    special: specialData,
+    specialAuthoritative,
+    upstreamCalls: fetchCalls,
+  } = carrier.id === 'cmhk' ? await fetchCmhkData() : await fetchCuniqData();
+  let upstreamCalls = fetchCalls;
 
   // Guard: if upstream returned nothing at all, keep the old cache untouched
   if (ordinaryData.length === 0 && specialData.length === 0) {
     console.warn('[Update] Upstream returned no data, keeping existing cache');
-    return { success: false, timestamp: cache.lastUpdated };
+    return { success: false, reason: 'upstream_empty', timestamp: cache.lastUpdated };
   }
 
-  // 3. Merge with existing cache
-  cache.ordinary = mergeNumbers(cache.ordinary, ordinaryData, updateTime, carrier.activeWindowMs);
-  cache.special = mergeNumbers(cache.special, specialData, updateTime, carrier.activeWindowMs);
+  // 3. Merge with existing cache.
+  //    A premium pool we could not fetch in full is no evidence of a sale, so
+  //    fall back to keeping everything until a clean run can prune it.
+  const specialWindow = specialAuthoritative ? carrier.specialWindowMs : KEEP_ALL;
+  if (!specialAuthoritative) {
+    console.warn('[Update] Premium pool incomplete — keeping previously cached premium numbers');
+  }
+  cache.ordinary = mergeNumbers(cache.ordinary, ordinaryData, updateTime, carrier.ordinaryWindowMs);
+  cache.special = mergeNumbers(cache.special, specialData, updateTime, specialWindow);
+
+  // 4. Re-check the numbers this run did not see. Only worth doing for pools
+  //    kept alive by a window; a zero-window pool has no survivors to check.
+  const verification = { checked: 0, confirmed: 0, removed: 0 };
+  const verifier: Verifier | null = carrier.id === 'cmhk' ? verifyCmhkNumbers : null;
+
+  if (verifier && carrier.verifyBudget > 0 && carrier.ordinaryWindowMs > 0) {
+    const budget = Math.max(0, Math.min(carrier.verifyBudget, MAX_UPSTREAM_CALLS_PER_RUN - upstreamCalls));
+    const candidates = unseenSince(cache.ordinary, updateTime).slice(0, budget);
+
+    if (candidates.length > 0) {
+      const { statuses, calls } = await verifier(candidates.map(n => n.hkNumber), budget);
+      upstreamCalls += calls;
+      const applied = applyVerification(cache.ordinary, statuses, updateTime);
+      cache.ordinary = applied.entries;
+      verification.checked = statuses.size;
+      verification.confirmed = applied.confirmed;
+      verification.removed = applied.removed;
+    }
+  }
+
   cache.lastUpdated = updateTime;
 
-  // 4. Active numbers (still shown after this update)
-  const activeOrdinary = cache.ordinary.filter(n => (n.lastSeenAt ?? 0) >= updateTime - carrier.activeWindowMs);
-  const activeSpecial = cache.special.filter(n => (n.lastSeenAt ?? 0) >= updateTime - carrier.activeWindowMs);
+  // 5. Active numbers (still shown after this update)
+  const activeOrdinary = cache.ordinary.filter(n => (n.lastSeenAt ?? 0) >= updateTime - carrier.ordinaryWindowMs);
+  const activeSpecial = cache.special.filter(n => (n.lastSeenAt ?? 0) >= updateTime - specialWindow);
 
-  // 5. Enrich with location data (mainland numbers only — dual-number carriers)
+  // 6. Refuse to persist a run that would gut a previously healthy pool
+  if (
+    isPoolCollapse(previousActive.ordinary, activeOrdinary.length) ||
+    isPoolCollapse(previousActive.special, activeSpecial.length)
+  ) {
+    console.error(
+      `[Update] Pool collapse guard tripped — not writing cache. ` +
+      `ordinary ${previousActive.ordinary}->${activeOrdinary.length}, ` +
+      `special ${previousActive.special}->${activeSpecial.length}`
+    );
+    return { success: false, reason: 'pool_collapse', timestamp: cache.lastUpdated };
+  }
+
+  // 7. Enrich with location data (mainland numbers only — dual-number carriers)
   let locationEnriched = 0;
   if (carrier.dualNumber) {
     const allActive = [...activeOrdinary, ...activeSpecial];
@@ -148,7 +146,7 @@ export async function runUpdate({ force = true }: { force?: boolean } = {}): Pro
     }));
   }
 
-  // 6. Save updated cache
+  // 8. Save updated cache
   await writeCache(cache);
 
   const duration = Date.now() - startTime;
@@ -170,6 +168,8 @@ export async function runUpdate({ force = true }: { force?: boolean } = {}): Pro
         new: cache.special.filter(n => n.addedAt === updateTime).length,
       },
       locationEnriched,
+      verification,
+      upstreamCalls,
     },
   };
 

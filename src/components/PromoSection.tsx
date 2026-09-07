@@ -1,5 +1,5 @@
-import { ArrowRight } from 'lucide-react';
 import TotalCount from '@/components/TotalCount';
+import StoreCtaLink from '@/components/StoreCtaLink';
 import { getCarrier } from '@/lib/carrier';
 
 type PromoSectionProps = {
@@ -26,7 +26,7 @@ function PromoCopy() {
 
         <p className="text-[15px] leading-relaxed text-muted-foreground">
           数据来自中国移动香港官网公开选号接口，
-          <strong className="font-semibold text-foreground">每 15 分钟自动同步</strong>
+          <strong className="font-semibold text-foreground">每 15 分钟自动同步并逐号复核在售状态</strong>
           。本站为第三方筛选工具，与中国移动香港无关联，号码可用性以
           <a
             href={carrier.storeUrl}
@@ -84,15 +84,7 @@ export default function PromoSection({ totalCount, lastUpdated }: PromoSectionPr
           <PromoCopy />
 
           <div className="shrink-0 self-center">
-            <a
-              href={carrier.storeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:opacity-90 hover:shadow-md active:scale-95"
-            >
-              {carrier.storeCtaLabel}
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
+            <StoreCtaLink placement="promo" />
           </div>
         </div>
       </div>

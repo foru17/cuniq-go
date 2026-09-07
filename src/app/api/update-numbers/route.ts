@@ -1,57 +1,51 @@
 import { NextResponse } from 'next/server';
 import { runUpdate } from '@/services/updateService';
 
+// A run makes up to MAX_UPSTREAM_CALLS_PER_RUN upstream requests with pacing
+// delays; the platform default (10s) is not enough.
+export const maxDuration = 60;
+
+type AuthOutcome = { ok: true } | { ok: false; status: number; error: string };
+
 /**
- * POST /api/update-numbers
- * Updates the number cache by fetching latest data from the carrier API
- * This endpoint should be called by backend scheduled tasks, not by frontend users
- * Requires Bearer token authentication
+ * Accepts either the manual token (UPDATE_API_TOKEN) or, when configured, the
+ * scheduler secret Vercel Cron sends as `Authorization: Bearer $CRON_SECRET`.
  */
-export async function POST(request: Request) {
-  console.log('[Update API] Starting data update...');
+function authorize(request: Request): AuthOutcome {
+  const accepted = [process.env.UPDATE_API_TOKEN, process.env.CRON_SECRET].filter(
+    (t): t is string => Boolean(t)
+  );
 
-  // Authentication check
+  if (accepted.length === 0) {
+    console.error('[Update API] Neither UPDATE_API_TOKEN nor CRON_SECRET is configured');
+    return { ok: false, status: 500, error: 'Server configuration error' };
+  }
+
   const authHeader = request.headers.get('authorization');
-  const expectedToken = process.env.UPDATE_API_TOKEN;
-
-  if (!expectedToken) {
-    console.error('[Update API] UPDATE_API_TOKEN not configured');
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Server configuration error',
-        timestamp: Date.now()
-      },
-      { status: 500 }
-    );
-  }
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer ')) {
     console.warn('[Update API] Missing or invalid authorization header');
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Unauthorized: Bearer token required',
-        timestamp: Date.now()
-      },
-      { status: 401 }
-    );
+    return { ok: false, status: 401, error: 'Unauthorized: Bearer token required' };
   }
 
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  if (token !== expectedToken) {
+  const token = authHeader.substring(7);
+  if (!accepted.includes(token)) {
     console.warn('[Update API] Invalid token provided');
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Unauthorized: Invalid token',
-        timestamp: Date.now()
-      },
-      { status: 401 }
-    );
+    return { ok: false, status: 401, error: 'Unauthorized: Invalid token' };
   }
 
-  console.log('[Update API] Authentication successful');
+  return { ok: true };
+}
+
+async function handle(request: Request, source: string) {
+  console.log(`[Update API] Starting data update (${source})...`);
+
+  const auth = authorize(request);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { success: false, error: auth.error, timestamp: Date.now() },
+      { status: auth.status }
+    );
+  }
 
   try {
     const result = await runUpdate({ force: true });
@@ -67,4 +61,19 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * POST /api/update-numbers — manual/backend trigger (Bearer UPDATE_API_TOKEN)
+ */
+export async function POST(request: Request) {
+  return handle(request, 'POST');
+}
+
+/**
+ * GET /api/update-numbers — scheduler trigger. Vercel Cron and most external
+ * cron services can only issue GETs; same auth rules apply.
+ */
+export async function GET(request: Request) {
+  return handle(request, 'GET');
 }

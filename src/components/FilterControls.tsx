@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/Switch';
 import { Input } from '@/components/ui/input';
 import { NumberEntry, filterNumbers, cn } from '@/lib/utils';
 import { getCarrier } from '@/lib/carrier';
+import { track } from '@/lib/analytics';
 
 export type FilterState = {
   include: string;
@@ -104,6 +105,16 @@ export default function FilterControls({
 
   const handleChange = <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     onFilterChange({ [key]: value });
+    // Only the discrete choices are worth an event; free-text inputs would
+    // fire on every keystroke.
+    if (key === 'luckyPattern' || key === 'location') {
+      track('apply_filter', { filter: key, value: String(value) || '(cleared)' });
+    }
+  };
+
+  const handleTypeChange = (type: 'ordinary' | 'special') => {
+    onTypeChange(type);
+    track('select_number_type', { number_type: type });
   };
 
   return (
@@ -118,7 +129,7 @@ export default function FilterControls({
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
           <div className="flex rounded-lg bg-secondary/60 p-0.5">
             <button
-              onClick={() => onTypeChange('ordinary')}
+              onClick={() => handleTypeChange('ordinary')}
               className={cn(
                 'rounded-md px-3 py-1 text-xs font-medium transition-all',
                 currentType === 'ordinary'
@@ -129,7 +140,7 @@ export default function FilterControls({
               普通号码
             </button>
             <button
-              onClick={() => onTypeChange('special')}
+              onClick={() => handleTypeChange('special')}
               className={cn(
                 'rounded-md px-3 py-1 text-xs font-medium transition-all',
                 currentType === 'special'
@@ -142,7 +153,10 @@ export default function FilterControls({
           </div>
 
           <button
-            onClick={onReset}
+            onClick={() => {
+              onReset();
+              track('reset_filters');
+            }}
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-secondary/60 hover:text-foreground"
             title="重置所有筛选条件"
           >

@@ -1,0 +1,55 @@
+# 定时刷新两个站点的号池缓存。
+#
+# 为什么不用 Vercel Cron：zuoluotv team 是 Hobby 计划，Vercel Cron 每天只触发
+# 一次，达不到 15 分钟的同步频率（页面上写的也是"每 15 分钟自动同步"）。
+# cmhk 站另有页面访问触发的后台自刷新作为兜底，本工作流是主要触发源。
+name: Refresh number pools
+
+on:
+  schedule:
+    # GitHub 的定时器在高峰时可能延迟几分钟，对 15 分钟的同步节奏可以接受
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-numbers
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - site: cuniq
+            url: https://cuniq.zuoluo.tv/api/update-numbers
+            secret: CUNIQ_UPDATE_API_TOKEN
+          - site: cmhk
+            url: https://cmhk.zuoluo.tv/api/update-numbers
+            secret: CMHK_UPDATE_API_TOKEN
+    steps:
+      - name: Trigger ${{ matrix.site }} update
+        env:
+          TOKEN: ${{ secrets[matrix.secret] }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::${{ matrix.secret }} is not configured"
+            exit 1
+          fi
+
+          body=$(mktemp)
+          status=$(curl -sS --max-time 120 -o "$body" -w '%{http_code}' \
+            -H "Authorization: Bearer $TOKEN" \
+            "${{ matrix.url }}")
+
+          echo "HTTP $status"
+          # 响应里只有统计数字，没有号码明细，可以安全打进日志
+          cat "$body"
+          echo
+
+          if [ "$status" != "200" ]; then
+            echo "::error::${{ matrix.site }} update failed with HTTP $status"
+            exit 1
+          fi

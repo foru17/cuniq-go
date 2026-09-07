@@ -52,9 +52,10 @@ export async function getNumbers(type: 'ordinary' | 'special' = 'ordinary') {
   // Get requested data type
   const numbers = type === 'special' ? cache.special : cache.ordinary;
 
-  // Filter active numbers (seen recently — window is 0 for cuniq)
+  // Filter active numbers (windows differ per pool — see CarrierConfig)
+  const windowMs = type === 'special' ? carrier.specialWindowMs : carrier.ordinaryWindowMs;
   const activeNumbers = numbers.filter(
-    n => (n.lastSeenAt ?? 0) >= cache.lastUpdated - carrier.activeWindowMs
+    n => (n.lastSeenAt ?? 0) >= cache.lastUpdated - windowMs
   );
 
   // Enrich with location data for any missing entries (dual-number carriers only)
@@ -90,9 +91,12 @@ export async function getTotalNumbersCount() {
   const cache = await readCache();
   if (!cache) return 0;
 
-  const threshold = cache.lastUpdated - carrier.activeWindowMs;
-  const activeOrdinary = cache.ordinary.filter(n => (n.lastSeenAt ?? 0) >= threshold);
-  const activeSpecial = cache.special.filter(n => (n.lastSeenAt ?? 0) >= threshold);
+  const activeOrdinary = cache.ordinary.filter(
+    n => (n.lastSeenAt ?? 0) >= cache.lastUpdated - carrier.ordinaryWindowMs
+  );
+  const activeSpecial = cache.special.filter(
+    n => (n.lastSeenAt ?? 0) >= cache.lastUpdated - carrier.specialWindowMs
+  );
 
   return activeOrdinary.length + activeSpecial.length;
 }

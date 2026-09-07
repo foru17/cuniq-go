@@ -24,11 +24,19 @@ export type CarrierConfig = {
   ogImage: { brand: string; subtitle: string; tagline: string };
   /**
    * Numbers whose lastSeenAt falls within this window before the latest
-   * update are still shown. 0 = only numbers seen in the latest update
-   * (cuniq returns the full pool each sync; cmhk returns a random batch,
-   * so recently-seen numbers are kept for a few hours).
+   * update are still shown. 0 = only numbers seen in the latest update.
+   * Split per pool because the two pools behave differently upstream:
+   * a source that returns its *complete* pool every call must use 0, or
+   * numbers that were sold since the last sync keep being displayed.
    */
-  activeWindowMs: number;
+  ordinaryWindowMs: number;
+  specialWindowMs: number;
+  /**
+   * Max number of "seen earlier but missing from this run" numbers to
+   * re-check one by one against upstream per update. 0 disables the check.
+   * Only meaningful for carriers whose pool window is > 0.
+   */
+  verifyBudget: number;
   /** Trigger a background data refresh from page views when cache is stale */
   selfRefresh: boolean;
   refreshIntervalMs: number;
@@ -59,7 +67,11 @@ const CARRIERS: Record<CarrierId, CarrierConfig> = {
       subtitle: '月神卡选号神器',
       tagline: 'HK$9/月 · 一卡双号 (+852/+86) · 靓号筛选工具',
     },
-    activeWindowMs: 0,
+    // Both cuniq pools saturate within a single sync (10 batches), so only
+    // numbers seen in the latest run are kept — nothing can go stale.
+    ordinaryWindowMs: 0,
+    specialWindowMs: 0,
+    verifyBudget: 0,
     selfRefresh: false,
     refreshIntervalMs: 15 * 60 * 1000,
   },
@@ -87,7 +99,13 @@ const CARRIERS: Record<CarrierId, CarrierConfig> = {
       subtitle: '中国移动香港 选号神器',
       tagline: '+852 香港号码 · C/D 级靓号 · 靓号筛选工具',
     },
-    activeWindowMs: 6 * 60 * 60 * 1000,
+    // W (ordinary) comes back as a random batch of a much larger pool, so a
+    // number missing from one run may well still be on sale — keep a window
+    // and re-check the stragglers instead. C/D (premium) return the complete
+    // list every call, so anything missing is genuinely sold: window 0.
+    ordinaryWindowMs: 3 * 60 * 60 * 1000,
+    specialWindowMs: 0,
+    verifyBudget: 40,
     selfRefresh: true,
     refreshIntervalMs: 15 * 60 * 1000,
   },

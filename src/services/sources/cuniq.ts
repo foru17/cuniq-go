@@ -103,5 +103,12 @@ export async function fetchCuniqData(): Promise<CarrierFetchResult> {
     fetchMultipleBatches(ORDINARY_URL, ORDINARY_HEADERS),
     fetchMultipleBatches(SPECIAL_URL, SPECIAL_HEADERS),
   ]);
-  return { ordinary, special };
+  // Both cuniq pools run with a zero keep window, so the authoritative flag
+  // has no effect here; report it truthfully anyway.
+  return {
+    ordinary,
+    special,
+    specialAuthoritative: special.length > 0,
+    upstreamCalls: BATCH_COUNT * 2,
+  };
 }
