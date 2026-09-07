@@ -38,7 +38,10 @@ function activeCount(entries: NumberEntry[], reference: number, windowMs: number
  * With force=false the run is skipped when the cache is still fresh — this is
  * how page-triggered background refreshes avoid stampeding the upstream.
  */
-export async function runUpdate({ force = true }: { force?: boolean } = {}): Promise<UpdateResult> {
+export async function runUpdate({
+  force = true,
+  ignoreCollapseGuard = false,
+}: { force?: boolean; ignoreCollapseGuard?: boolean } = {}): Promise<UpdateResult> {
   const carrier = getCarrier();
   const startTime = Date.now();
   console.log(`[Update] Starting data update for carrier=${carrier.id}...`);
@@ -84,12 +87,22 @@ export async function runUpdate({ force = true }: { force?: boolean } = {}): Pro
   // 3. Merge with existing cache.
   //    A premium pool we could not fetch in full is no evidence of a sale, so
   //    fall back to keeping everything until a clean run can prune it.
-  const specialWindow = specialAuthoritative ? carrier.specialWindowMs : KEEP_ALL;
+  cache.ordinary = mergeNumbers(cache.ordinary, ordinaryData, updateTime, carrier.ordinaryWindowMs);
+  cache.special = mergeNumbers(
+    cache.special,
+    specialData,
+    updateTime,
+    specialAuthoritative ? carrier.specialWindowMs : KEEP_ALL
+  );
+
   if (!specialAuthoritative) {
     console.warn('[Update] Premium pool incomplete — keeping previously cached premium numbers');
+    // Retaining them in the cache is not enough: readers filter by the same
+    // zero-width window, which would hide every number this run failed to
+    // re-fetch. "Could not check" has to read as "still seen", so the next
+    // successful run is what prunes the pool.
+    cache.special = cache.special.map(entry => ({ ...entry, lastSeenAt: updateTime }));
   }
-  cache.ordinary = mergeNumbers(cache.ordinary, ordinaryData, updateTime, carrier.ordinaryWindowMs);
-  cache.special = mergeNumbers(cache.special, specialData, updateTime, specialWindow);
 
   // 4. Re-check the numbers this run did not see. Only worth doing for pools
   //    kept alive by a window; a zero-window pool has no survivors to check.
@@ -115,19 +128,27 @@ export async function runUpdate({ force = true }: { force?: boolean } = {}): Pro
 
   // 5. Active numbers (still shown after this update)
   const activeOrdinary = cache.ordinary.filter(n => (n.lastSeenAt ?? 0) >= updateTime - carrier.ordinaryWindowMs);
-  const activeSpecial = cache.special.filter(n => (n.lastSeenAt ?? 0) >= updateTime - specialWindow);
+  const activeSpecial = cache.special.filter(n => (n.lastSeenAt ?? 0) >= updateTime - carrier.specialWindowMs);
 
-  // 6. Refuse to persist a run that would gut a previously healthy pool
-  if (
+  // 6. Refuse to persist a run that would gut a previously healthy pool.
+  //    If a carrier genuinely shrinks its pool by more than 70%, every run
+  //    would keep refusing — `ignoreCollapseGuard` is the manual way out.
+  const collapsed =
     isPoolCollapse(previousActive.ordinary, activeOrdinary.length) ||
-    isPoolCollapse(previousActive.special, activeSpecial.length)
-  ) {
+    isPoolCollapse(previousActive.special, activeSpecial.length);
+
+  if (collapsed && !ignoreCollapseGuard) {
     console.error(
       `[Update] Pool collapse guard tripped — not writing cache. ` +
       `ordinary ${previousActive.ordinary}->${activeOrdinary.length}, ` +
-      `special ${previousActive.special}->${activeSpecial.length}`
+      `special ${previousActive.special}->${activeSpecial.length}. ` +
+      `Re-run with ?ignore_collapse=1 if the pool really did shrink.`
     );
     return { success: false, reason: 'pool_collapse', timestamp: cache.lastUpdated };
+  }
+
+  if (collapsed) {
+    console.warn('[Update] Pool collapse guard bypassed on request');
   }
 
   // 7. Enrich with location data (mainland numbers only — dual-number carriers)

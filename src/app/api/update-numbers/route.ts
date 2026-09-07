@@ -47,8 +47,12 @@ async function handle(request: Request, source: string) {
     );
   }
 
+  // Escape hatch for the pool-collapse guard, for when upstream really did
+  // shrink its pool and every scheduled run is refusing to write.
+  const ignoreCollapseGuard = new URL(request.url).searchParams.get('ignore_collapse') === '1';
+
   try {
-    const result = await runUpdate({ force: true });
+    const result = await runUpdate({ force: true, ignoreCollapseGuard });
     return NextResponse.json(result, { status: result.success ? 200 : 502 });
   } catch (error) {
     console.error('[Update API] Error:', error);

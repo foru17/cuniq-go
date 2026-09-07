@@ -29,6 +29,8 @@ export const ORDINARY_BATCH_COUNT = 8;
 export const VERIFY_BUDGET = 40;
 export const MAX_UPSTREAM_CALLS_PER_RUN = 50;
 const BATCH_DELAY_MS = 300;
+// A hung upstream request must not eat the whole 60s function budget
+const REQUEST_TIMEOUT_MS = 10_000;
 
 // Verification pacing — the endpoint is a public number picker, so stay polite
 const VERIFY_CONCURRENCY = 3;
@@ -72,6 +74,7 @@ async function fetchCmhkBatch(level: string, msisdnCondition = ''): Promise<Batc
       method: 'POST',
       headers: HEADERS,
       body: buildBody(level, msisdnCondition),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -83,7 +86,13 @@ async function fetchCmhkBatch(level: string, msisdnCondition = ''): Promise<Batc
       throw new Error(`CMHK API code=${json.code} message=${json.message}`);
     }
 
-    const list: string[] = json.data?.numberList || [];
+    // An absent list is a malformed answer, not "no numbers left" — treating
+    // it as an empty pool would delete every number it was asked about.
+    if (!Array.isArray(json.data?.numberList)) {
+      throw new Error('CMHK API returned no numberList array');
+    }
+
+    const list: string[] = json.data.numberList;
     if (!msisdnCondition) {
       console.log(`[CMHK] level=${level} got ${list.length} numbers`);
     }

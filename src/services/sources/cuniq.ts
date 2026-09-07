@@ -31,6 +31,7 @@ const SPECIAL_HEADERS = {
 // Batch fetching configuration (hard caps — keep bounded per update run)
 const BATCH_COUNT = 10; // Number of requests per update
 const BATCH_DELAY_MS = 200; // Delay between requests in milliseconds
+const REQUEST_TIMEOUT_MS = 10_000; // A hung request must not eat the function budget
 
 async function fetchFromCUniq(url: string, headers: Record<string, string>) {
   console.log(`Fetching from CUniq: ${url}`);
@@ -38,6 +39,7 @@ async function fetchFromCUniq(url: string, headers: Record<string, string>) {
     const response = await fetch(url, {
       headers: headers,
       method: "GET",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     console.log(`CUniq Response Status: ${response.status}`);
@@ -103,8 +105,9 @@ export async function fetchCuniqData(): Promise<CarrierFetchResult> {
     fetchMultipleBatches(ORDINARY_URL, ORDINARY_HEADERS),
     fetchMultipleBatches(SPECIAL_URL, SPECIAL_HEADERS),
   ]);
-  // Both cuniq pools run with a zero keep window, so the authoritative flag
-  // has no effect here; report it truthfully anyway.
+  // An empty special result means all 10 batches failed, not that the pool
+  // emptied — reporting it as non-authoritative makes the caller keep the
+  // previously cached premium numbers instead of wiping them.
   return {
     ordinary,
     special,

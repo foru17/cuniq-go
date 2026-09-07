@@ -16,7 +16,8 @@
   - cuniq 两个池都是 0——每次同步 10 批就能覆盖全池，没见到的即已售。
   - cmhk 普通池（W）3h，靓号池（C/D）0——C/D 每次调用返回**全量**列表，缺席即已售；W 是大池里的批次，缺席不代表售出。
 - **逐号可用性校验**（`src/services/sources/cmhk.ts` 的 `verifyCmhkNumbers`）：把完整 8 位号码填进 `msisdnCondition` 就是精确查询，命中=在售、空=已售。每轮对"本轮没见到且还在窗口内"的号按最旧优先校验最多 40 个（`verifyBudget`），`gone` 删除、`available` 续期、任何异常算 `unknown` 一律保留。单轮上游调用硬上限 `MAX_UPSTREAM_CALLS_PER_RUN = 50`。
-- **兜底**：靓号池任一等级抓取失败 → 该轮不按 0 窗口裁剪（`KEEP_ALL`），避免把靓号池打空；活跃号数量相比上轮塌陷到 30% 以下则整轮拒绝写缓存（`isPoolCollapse`）。
+- **兜底**：靓号池任一等级抓取失败 → 该轮保留全部旧靓号（`KEEP_ALL`）**并把它们的 `lastSeenAt` 推到本轮**——只留在缓存里不够，读取侧同样按 0 窗口过滤，不续期的话页面上会全部消失。活跃号数量相比上轮塌陷到 30% 以下则整轮拒绝写缓存（`isPoolCollapse`），确认上游真的缩池时用 `?ignore_collapse=1` 越过。
+- 上游响应里 `numberList` 不是数组一律当作抓取失败，绝不当成"号池空了"——否则一轮能误删 40 个号。所有上游请求带 10s 超时，避免单个挂死请求吃满 60s 函数预算。
 - 数据更新触发：`/api/update-numbers` 同时支持 `POST`（手动，Bearer `UPDATE_API_TOKEN`）和 `GET`（定时器，Bearer `UPDATE_API_TOKEN` 或 `CRON_SECRET`）。定时器是本仓库的 GitHub Actions `.github/workflows/refresh-numbers.yml`（`*/15 * * * *`，同时打两个站，token 存在仓库 secrets `CUNIQ_UPDATE_API_TOKEN` / `CMHK_UPDATE_API_TOKEN`）。cmhk 另有页面访问触发的 `after()` 自刷新兜底（缓存 >15 分钟才触发）。
 - **两个站都开了 Vercel 的 bot 挑战**：从大陆 IP 用 curl 访问会拿到 `HTTP 403` + `x-vercel-mitigated: challenge`（连首页都是），海外出口（GitHub Actions runner、Surge 代理 127.0.0.1:6152）则正常 200。本机调试线上接口一律加 `-x http://127.0.0.1:6152`。
 - 上游接口的实测特性（2026-09-07 验证）：CMHK 模糊 `msisdnCondition`（1~3 位）返回的是**随机子集**，不能用来枚举全池；只有 8 位精确查询可靠。CUniq 同样支持 `queryNum=<8位>` 精确查询。
